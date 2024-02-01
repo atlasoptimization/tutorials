@@ -15,77 +15,51 @@ The tutorials consist in the following:
     - fitting model with hidden variables   (tutorial_6)
     - fitting model with neural networks    (tutorial_7)
 
-This script is to showcase key bayesian concepts and how implementing them in 
-python will hit some roadblocks that require proper bookkeeping and numerics
-thereby motivating the use of probabilistic programming languages like pyro.
-The toy example to which we will apply bayesian analysis aims to investigate
-some unknown properties of a measurement instrument.
+This script will create a more complicated forward model in pyro. The model 
+creates a dataset of instrument drifts that will be analyzed and provides the
+data for model fitting tasks in later tutorials. The model will generate several
+batches of multivariate data with hidden variables and nonlinearities.
+
 For this, do the following:
     1. Imports and definitions
-    2. Generate synthetic data
-    3. Bayes theorem and posterior densities
-    4. Prior information
-    5. ML estimates vs MAP estimates
-    6. Distributions vs point estimates
-    7. Some roadbloacks and outlook
+    2. Create model architecture
+    3. Create nonlinear features 
+    4. Sample hidden variables
+    5. Generate and save data
+    6. Analyze data
     
 The script is meant solely for educational and illustrative purposes. Written by
 Jemil Avers Butt, Atlas optimization GmbH, www.atlasoptimization.com.
 """
 
+
 """
     1. Imports and definitions
 """
 
 
-# i) Imports
-
-import numpy as np
-import matplotlib.pyplot as plt
-
-
-# ii) Definitions
-
-
-
-
-
 
 """
-    2. Generate synthetic data
+    2. Create model architecture
 """
 
 
 
-
 """
-    3. Bayes theorem and posterior densities
-"""
-
-
-
-
-"""
-    4. Prior information
+    3. Create nonlinear features 
 """
 
 
-
-
 """
-    5. ML estimates vs MAP estimates
+    4. Sample hidden variables
 """
 
 
-
-
 """
-    6. Distributions vs point estimates
+    5. Generate and save data
 """
 
 
-
-
 """
-    7. Some roadbloacks and outlook
+    6. Analyze data
 """

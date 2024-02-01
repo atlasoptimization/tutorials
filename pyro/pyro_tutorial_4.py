@@ -15,19 +15,21 @@ The tutorials consist in the following:
     - fitting model with hidden variables   (tutorial_6)
     - fitting model with neural networks    (tutorial_7)
 
-This script is to showcase key bayesian concepts and how implementing them in 
-python will hit some roadblocks that require proper bookkeeping and numerics
-thereby motivating the use of probabilistic programming languages like pyro.
-The toy example to which we will apply bayesian analysis aims to investigate
-some unknown properties of a measurement instrument.
+This script will fit a very simple model to the data that was created in the 
+previous tutorial. The model will be a normal distribution with unknown mean
+and variance. We investigate how to pose an estimation problem like this in
+pyro employing models and guides passed to a stochastic variational inference
+algorithm. A comparison to the analytical best guesses for the unknown parameters
+confirms the correctness.
+
 For this, do the following:
     1. Imports and definitions
-    2. Generate synthetic data
-    3. Bayes theorem and posterior densities
-    4. Prior information
-    5. ML estimates vs MAP estimates
-    6. Distributions vs point estimates
-    7. Some roadbloacks and outlook
+    2. Load and simplify data
+    3. Define stochastic model 
+    4. Define guide 
+    5. Showcase calculation of derivatives
+    6. Stochastic variational inference
+    7. Comparison to analytical solution
     
 The script is meant solely for educational and illustrative purposes. Written by
 Jemil Avers Butt, Atlas optimization GmbH, www.atlasoptimization.com.
@@ -38,54 +40,31 @@ Jemil Avers Butt, Atlas optimization GmbH, www.atlasoptimization.com.
 """
 
 
-# i) Imports
-
-import numpy as np
-import matplotlib.pyplot as plt
-
-
-# ii) Definitions
-
-
-
-
-
-
 """
-    2. Generate synthetic data
+    2. Load and simplify data
 """
 
 
-
-
 """
-    3. Bayes theorem and posterior densities
+    3. Define stochastic model 
 """
 
 
-
-
 """
-    4. Prior information
+    4. Define guide 
 """
 
 
-
-
 """
-    5. ML estimates vs MAP estimates
+    5. Showcase calculation of derivatives
 """
 
 
-
-
 """
-    6. Distributions vs point estimates
+    6. Stochastic variational inference
 """
 
 
-
-
 """
-    7. Some roadbloacks and outlook
+    7. Comparison to analytical solution
 """

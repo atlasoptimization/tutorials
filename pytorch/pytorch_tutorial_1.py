@@ -20,6 +20,8 @@ The script is meant solely for educational and illustrative purposes. Written by
 Jemil Avers Butt, Atlas optimization GmbH, www.atlasoptimization.com.
 """
 
+
+
 """
     1. Imports and definitions
 """
@@ -35,6 +37,7 @@ import numpy as np
 """
     2. Generate numpy array & check properties
 """
+
 
 # i) Generate numpy array
 

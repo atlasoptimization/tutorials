@@ -15,77 +15,51 @@ The tutorials consist in the following:
     - fitting model with hidden variables   (tutorial_6)
     - fitting model with neural networks    (tutorial_7)
 
-This script is to showcase key bayesian concepts and how implementing them in 
-python will hit some roadblocks that require proper bookkeeping and numerics
-thereby motivating the use of probabilistic programming languages like pyro.
-The toy example to which we will apply bayesian analysis aims to investigate
-some unknown properties of a measurement instrument.
+This script will create a simple forward model in pyro and explore the different
+aspects and relationships in that model using pyro's diagnosis tools. We will 
+learn to incoporate information about conditional independence into models 
+using the to_event() and pyro.plate() commands and see how pyro keeps track of
+model dependencies with pyro.poutine
+
 For this, do the following:
     1. Imports and definitions
-    2. Generate synthetic data
-    3. Bayes theorem and posterior densities
-    4. Prior information
-    5. ML estimates vs MAP estimates
-    6. Distributions vs point estimates
-    7. Some roadbloacks and outlook
+    2. Build model producing a single batch of data
+    3. Perform model inspection with pyro.poutine
+    4. Build model producing multiple independent batches
+    5. Perform model inspection with pyro.poutine
+    6. Notes on model dimensions
     
 The script is meant solely for educational and illustrative purposes. Written by
 Jemil Avers Butt, Atlas optimization GmbH, www.atlasoptimization.com.
 """
 
+
+
 """
     1. Imports and definitions
 """
 
 
-# i) Imports
-
-import numpy as np
-import matplotlib.pyplot as plt
-
-
-# ii) Definitions
-
-
-
-
-
-
 """
-    2. Generate synthetic data
+    2. Build model producing a single batch of data
 """
 
 
-
-
 """
-    3. Bayes theorem and posterior densities
+    3. Perform model inspection with pyro.poutine
 """
 
 
-
-
 """
-    4. Prior information
+    4. Build model producing multiple independent batches
 """
 
 
-
-
 """
-    5. ML estimates vs MAP estimates
+    5. Perform model inspection with pyro.poutine
 """
 
 
-
-
 """
-    6. Distributions vs point estimates
-"""
-
-
-
-
-"""
-    7. Some roadbloacks and outlook
+    6. Notes on model dimensions
 """
