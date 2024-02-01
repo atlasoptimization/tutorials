@@ -1,0 +1,70 @@
+Tutorial 1: First Contact with Pyro
+Introduction to Pyro and Probabilistic Programming
+Overview of Pyro and its relationship with PyTorch.
+Basic concepts of probabilistic programming.
+Simple Pyro Model
+Constructing a basic model using pyro.sample and pyro.distributions.
+Visualization and Interpretation
+Simple visualizations of the model's output.
+Takeaway: Understand Pyro's fundamentals and build a simple probabilistic model.
+Tutorial 2: Forward Modelling and Diagnosis
+Advanced Model Construction
+Building a slightly more complex model than in Tutorial 1.
+pyro.poutine.trace
+Using pyro.poutine.trace for model inspection and debugging.
+pyro.plate and Conditional Independence
+Introduction to pyro.plate for expressing vectorized operations and conditional independence.
+Diagnostic Tools and Techniques
+Exploring diagnostic tools for model analysis.
+Takeaway: Gain deeper insights into Pyro models and diagnostic practices.
+Tutorial 3: Data Generation and Analysis
+Synthetic Data Generation
+Generating datasets using different distributions.
+Discussion on choice of distributions and their real-world implications.
+Data Visualization and Statistical Analysis
+Techniques for data visualization.
+Performing basic statistical analysis on generated data.
+Data Management
+Saving and loading the dataset for use in subsequent tutorials.
+Takeaway: Learn data generation, manipulation, and basic analysis techniques.
+Tutorial 4: Fitting a Simple Model
+Building and Fitting a Gaussian Model
+Constructing a Gaussian model to fit the generated data.
+Understanding the model and guide structure in Pyro.
+Stochastic Variational Inference (SVI)
+Introduction to SVI and fitting the model to data.
+Model Evaluation
+Comparing the Bayesian model to simple statistical measures (like arithmetic mean).
+Takeaway: Understand how to fit simple models to data using Pyro's SVI.
+Tutorial 5: Fitting a Least Squares Model
+Least Squares Model in Pyro
+Building a least squares model suitable for the generated data.
+Parameter Optimization
+Discussing parameter optimization in Pyro and potential issues.
+SVI Deep Dive
+Advanced details of SVI, particularly with more complex models.
+Comparison to Analytic Solutions
+Comparing the Pyro solution to a traditional least squares solution.
+Troubleshooting and Debugging
+Common issues and solutions, focusing on dimensionality and training problems.
+Takeaway: Learn advanced model fitting techniques and troubleshooting.
+Tutorial 6: Model with Hidden Variables
+Multivariate Models with Hidden Variables
+Building models with unobserved/latent variables.
+Generating and Fitting Synthetic Data
+Creating and using more complex synthetic data that suits this model.
+Advanced Guide Construction
+Writing a non-trivial guide for the variational inference.
+Posterior Analysis
+Computing and interpreting posterior distributions.
+Takeaway: Understand the handling of latent variables in model building and inference.
+Tutorial 7: Class-Based Design and ANN Model
+Class-Based Modeling in Pyro
+How to structure Pyro models using Python classes.
+Integration with PyTorch Neural Networks
+Building a model that incorporates a neural network for covariance estimation.
+Training and Evaluation
+Training the model and evaluating its performance.
+Discussion on Design Choices
+Pros and cons of using a class-based design in probabilistic modeling.
+Takeaway: Advanced modeling techniques combining Pyro and PyTorch, with a focus on design patterns and neural network integration.
