@@ -21,8 +21,8 @@ overview of different modules of pyro and sample from some distribution.
 For this, do the following:
     1. Imports and definitions
     2. Comparison, numpy, pytorch, pyro
-    3. Tensors as central building blocks
-    4. Distributions and sampling
+    3. Distributions and sampling
+    4. Tensors as central building blocks
     5. Overview pyro functionality
     
 The script is meant solely for educational and illustrative purposes. Written by
@@ -39,6 +39,8 @@ Jemil Avers Butt, Atlas optimization GmbH, www.atlasoptimization.com.
 import numpy as np
 import torch
 import pyro
+
+import inspect
 
 import matplotlib.pyplot as plt
 
@@ -187,20 +189,185 @@ print(" Optimization results t_mu = {} \n Analytical ML estimate t_mu = {}".
 
 # iii) Special pyro constructs
 
+# Since pyro = pytorch + probability, pyro modelbuilding is centered around 
+# tensors. What we did above in pytorch with declaring some data as samples
+# of a probabilistic model and then performing gradient descent to estimate
+# some parameters - under the hood pyro does basically the same thing. It 
+# provides convenient representations of sampling, observation, inference.
+# The above problem could be solved in pyro using
+#   1. pyro.distributions(...) for declaring a specific distribution
+#   2. pyro.sample(... obs = True) for declaring a sample observed and 
+#       preparing for inference 
+#   3. pyro.plate(...) context manager for declaring independence of samples
+#   4. pyro.infer.SVI(...) for setting up the optimization problem
+# Finally, a training loop would be executed by calling the SVI's step() 
+# functionality. The code for all of this is more complicated than in 
+# pytorch due to the use of special constructs like pyro.sample() and pyro.plate()
+# and we will only see the full picture in terms of model building and inference
+# in tutorial_4. The reader may at this point ask why to use pyro at all but
+# they may rest assured that all these extra provisions of clearly defining
+#   - probability distributions
+#   - sample_statements
+#   - observation statements
+#   - conditional independence structures
+#   - probabilistically motivated loss 
+# become essential and convenient in case the models get more complicated.
+# When multiple probability distributions, latent random variables, and neural 
+# networks are coupled with the complicated control flow of a nontrivial python
+# program, writing a pytorch inference scheme to keep track of that is very hard
+# while the declarations pyro forces you to do enable automatic bookkeeping.
+# In short, pyro has additional declarative overhead but the coding effort 
+# scales very well to complicated probabilistic models.
+
+
+
+"""
+    3. Distributions and sampling
+"""
+
+
+# i) Distributions in pyro
+
+# pyro offers a wide variety of distributions that range from widely used standard
+# distributions (normal distribution, uniform distribution) to very specialized 
+# distributions (Von Mises 3D distribution, Half Cauchy distribution). Many
+# of the multivariate distributions featuring in machine learning tasks like
+# the multivariate Gaussian or the Wishart distribution are implemented as well.
+# The distributions can all be found in the submodule pyro.distributions, lets
+# list the available distributions.
+
+# Iterate through pyro.distributions and check if element is distribution
+distribution_classes = []
+for name, obj in inspect.getmembers(pyro.distributions):
+    if inspect.isclass(obj) and issubclass(obj, pyro.distributions.Distribution):
+        distribution_classes.append(name)
+# Print the list of distribution classes
+print('This is a list of distributions supported by pyro : \n {}'.format(distribution_classes))
+
+# Apart from these distributions, you can also construct new distributions by 
+# transforming or mixing preimplemented distributions. Note some of the entries
+# in the list that hint at that, e.g. TransformedDistribution, FoldedDistribution,
+# or MixtureSameFamily.
+
+# All distributions have the same basic methods available to them; they can be
+# sampled from and the log probability can be computed. Apart from these common
+# attributed of the pyro.distributions.Distribution class, every distribution
+# has more specific properties; see e.g. the Normal distribution
+
+# All normal distributions have some constraints on the parameters and their
+# realizations lie in the reals.
+normal_distributions = pyro.distributions.Normal
+constraints = normal_distributions.arg_constraints
+support = normal_distributions.support
+print('Normal distributions have constraints \n {} \n and support \n {}'
+      .format(constraints, support))
+
+# For specific instantiations of the normal distribution, we can compute
+# the log prob, the cumulative distribution, the entropy, and more. Lets do
+# this for the standard normal distribution (sn)
+sn_dist = pyro.distributions.Normal(loc = 0, scale = 1)
+log_prob_values = sn_dist.log_prob(t_index)
+cdf_values = sn_dist.cdf(t_index)
+plt.plot(cdf_values)
+plt.title('Cumulative distribution function of standard normal')
+print(' Standard normal has entropy of {:.3f}, mean of {}, variance of {}'
+      .format(sn_dist.entropy(), sn_dist.mean, sn_dist.variance) )
+
+
+# ii) Shapes and rehspaing of distributions 
+
+# The distributions all have two different type of shapes, the event_shape and
+# the batch_shape. The event_shape quantifies the shape of a single realization
+# of this distribution while the batch_shape quantifies how many independent 
+# realizations this distribution is supposed to produce.  
+
+# The above standard normal has trivial shapes of batch_shape = [] and 
+# event_shape = [] reflecting the fact that it produces simple scalars.
+sn_shape = sn_dist.shape()
+sn_event_shape = sn_dist.event_shape
+sn_batch_shape = sn_dist.batch_shape
+print('Standard normal as defined above has trivial shape  {} = batch_shape {} + event_shape {} '
+      .format(shape, event_shape, batch_shape))
+
+# There are commands to reshape distributions, see the tutorial on tensor shapes
+# and pytorch  broadcasting rules. Note that the left dimensions are reserved
+# for batching and the right ones for the events. A multivariate Gaussian
+# distribution whose output is a vector of 2 dimensions and which produces
+# 10 independent realizations would have event_shape = 2 and batch_shape = 10 and
+# sampling from it once would produce a [10,2] tensor.
+
+mu_vec = torch.zeros([1,2])     # leftmost dim reserved for batching, rightmost dim for 2d vectors
+cov_mat = torch.eye(2)          # is a 2 x 2 matrix, interpreted as cov mat for each batch
+
+# Creating the multivariate normal distribution wiht the right dimensions hinges 
+# on the broadcasting rules. If mu_vec and cov_mat are compared, the rightmost
+# dimensions are compatible (2 for mu_vec and 2 x 2 for cov_mat). The leftmost
+# dimension is considered the batch dimension; right now we only have one batch
+# = one independent realization. 
+
+single_mvn_dist = pyro.distributions.MultivariateNormal(loc = mu_vec, covariance_matrix = cov_mat)
+single_mvn_shape = single_mvn_dist.shape()
+single_mvn_batch_shape = single_mvn_dist.batch_shape
+single_mvn_event_shape = single_mvn_dist.event_shape
+single_mvn_event_dim = single_mvn_dist.event_dim
+print('A multivariate normal distribution generating a single sample of a 2D vector'\
+      'has \n shape = {} \n batch_shape = {}\n event_shape = {} \n and the index'\
+      ' of the location of the event is event_dim = {}'.format(single_mvn_shape, 
+        single_mvn_batch_shape, single_mvn_event_shape, single_mvn_event_dim))
+
+# We expand the batch dimension to 10 via the command distribution.expand([10]) 
+# which declares the distribution to generate 10 independent copies.
+mvn_dist = mvn_dist.expand(batch_shape = [10])
+mvn_shape = mvn_dist.shape()
+mvn_batch_shape = mvn_dist.batch_shape
+mvn_event_shape = mvn_dist.event_shape
+mvn_event_dim = mvn_dist.event_dim
+print('A multivariate normal distribution generating 10 samples of a 2D vector'\
+      'has \n shape = {} \n batch_shape = {}\n event_shape = {} \n and the index'\
+      ' of the location of the event is event_dim = {}'.format(mvn_shape, 
+        mvn_batch_shape, mvn_event_shape, mvn_event_dim))
+
+
+# Note that there are several ways which can be used to commnicate the batch_shape
+# and event_shape to pyro. This includes choosing appropriate consistent shapes
+# for the parameters, the expand() command, the to_event() command, and the 
+# pyro plate context manager. In pyro, all dimensions of a distribution either
+# need to be declared dependent or independent.
+
+
+# iii) Sampling in pyro
+
+# You can sample from distributions and declare samples to be observed and equal
+# to some data. The first action (sampling) is a simple action that can be done
+# in almost any other library as well; it produces some numbers/tensors.
+# The second action (declaring a sample equal to some data) is a convenient pyro
+# mechanism for computing the log_prob of a distribution and prepare pyro for
+# gradient computation and thereby inference.
+
+
+
 
 
 
 
 """
-    3. Tensors as central building blocks
+    4. Tensors as central building blocks
 """
-
-
-"""
-    4. Distributions and sampling
-"""
-
 
 """
     5. Overview pyro functionality
 """
+
+
+
+
+
+
+
+
+
+
+
+
+
+
