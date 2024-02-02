@@ -20,10 +20,11 @@ pyro. We will showcase the differences between numpy, pytorch, and pyro, get an
 overview of different modules of pyro and sample from some distribution.
 For this, do the following:
     1. Imports and definitions
-    2. Comparison, numpy, pytorch, pyro
-    3. Distributions and sampling
-    4. Tensors as central building blocks
-    5. Overview pyro functionality
+    2. pyro estimation example
+    3. Comparison, numpy, pytorch, pyro
+    4. Distributions and sampling
+    5. Tensors as central building blocks
+    6. Overview pyro functionality
     
 The script is meant solely for educational and illustrative purposes. Written by
 Jemil Avers Butt, Atlas optimization GmbH, www.atlasoptimization.com.
@@ -47,11 +48,82 @@ import matplotlib.pyplot as plt
 
 # ii) Definitions
 
+np.random.seed(0)
+torch.manual_seed(0)
 
 
 
 """
-    2. Comparison, numpy, pytorch, pyro
+    2. pyro estimation example
+"""
+
+
+# We start the tutorial directly by teasering the typical form of a program
+# written in pyro and what it can do. The example will be to estimate the
+# mean and variance parameters of a normal distribution based on some data.
+# This example will feature many commands that are to be explained only later.
+# The aim is therefore to familiarize the reader with the look and feel and power
+# of pyro syntax and to motivate a deeper delve into the tutorial.
+
+# i) Generate data
+
+mu_true = 1
+sigma_true = 2
+
+n_data = 100
+dataset = torch.distributions.Normal(loc = mu_true, scale = sigma_true).sample([n_data])
+
+
+# ii) Defining the model 
+
+def model(observations = None):
+    # Declare parameters
+    mu = pyro.param(name = 'mu', init_tensor = torch.tensor([0.0]))
+    sigma = pyro.param(name = 'sigma', init_tensor = torch.tensor([1.0]))
+    
+    # Declare distribution and sample n_data independent samples, condition on observations
+    model_dist = pyro.distributions.Normal(loc = mu, scale = sigma)
+    with pyro.plate('batch_plate', size = n_data):    
+        model_sample = pyro.sample('model_sample', model_dist, obs = observations)
+    
+    return model_sample
+
+
+# iii) Setting up inference
+
+# Variational distribution
+def guide(observations = None):
+    pass
+
+# Optimization options
+adam = pyro.optim.Adam({"lr": 0.1})
+elbo = pyro.infer.Trace_ELBO()
+svi = pyro.infer.SVI(model, guide, adam, elbo)
+
+
+# iv) Inference and print results
+
+for step in range(100):
+    loss = svi.step(dataset)
+
+print('True mu = {}, True sigma = {} \n Inferred mu = {:.3f}, Inferred sigma = {:.3f}'
+      .format(mu_true, sigma_true, 
+              pyro.get_param_store()['mu'].item(),
+              pyro.get_param_store()['sigma'].item()))
+
+# In this example, we have generated a new dataset (no pyro involved) and then
+# proceeded to declare a model. This involved declaring parameters, defining
+# distributions, declaring independence and conditioning on observations.
+# We also had to define a guide function and run an inference loop. Maybe not
+# a lot of this code is immediately clear but it looks understandable and the
+# syntax is clean and meaningful. A lot of the actual meaning and content is
+# visible only after looking in detail at the different components of pyro, 
+# which is what will happen in the next tutorials.
+
+
+
+"""
+    3. Comparison, numpy, pytorch, pyro
 """
 
 
@@ -222,7 +294,7 @@ print(" Optimization results t_mu = {} \n Analytical ML estimate t_mu = {}".
 
 
 """
-    3. Distributions and sampling
+    4. Distributions and sampling
 """
 
 
@@ -287,14 +359,14 @@ sn_shape = sn_dist.shape()
 sn_event_shape = sn_dist.event_shape
 sn_batch_shape = sn_dist.batch_shape
 print('Standard normal as defined above has trivial shape  {} = batch_shape {} + event_shape {} '
-      .format(shape, event_shape, batch_shape))
+      .format(sn_shape, sn_event_shape, sn_batch_shape))
 
 # There are commands to reshape distributions, see the tutorial on tensor shapes
 # and pytorch  broadcasting rules. Note that the left dimensions are reserved
 # for batching and the right ones for the events. A multivariate Gaussian
 # distribution whose output is a vector of 2 dimensions and which produces
-# 10 independent realizations would have event_shape = 2 and batch_shape = 10 and
-# sampling from it once would produce a [10,2] tensor.
+# 50 independent realizations would have event_shape = 2 and batch_shape = 50 and
+# sampling from it once would produce a [50,2] tensor.
 
 mu_vec = torch.zeros([1,2])     # leftmost dim reserved for batching, rightmost dim for 2d vectors
 cov_mat = torch.eye(2)          # is a 2 x 2 matrix, interpreted as cov mat for each batch
@@ -315,14 +387,14 @@ print('A multivariate normal distribution generating a single sample of a 2D vec
       ' of the location of the event is event_dim = {}'.format(single_mvn_shape, 
         single_mvn_batch_shape, single_mvn_event_shape, single_mvn_event_dim))
 
-# We expand the batch dimension to 10 via the command distribution.expand([10]) 
-# which declares the distribution to generate 10 independent copies.
-mvn_dist = mvn_dist.expand(batch_shape = [10])
+# We expand the batch dimension to 50 via the command distribution.expand([50]) 
+# which declares the distribution to generate 50 independent copies.
+mvn_dist = single_mvn_dist.expand(batch_shape = [50])
 mvn_shape = mvn_dist.shape()
 mvn_batch_shape = mvn_dist.batch_shape
 mvn_event_shape = mvn_dist.event_shape
 mvn_event_dim = mvn_dist.event_dim
-print('A multivariate normal distribution generating 10 samples of a 2D vector'\
+print('A multivariate normal distribution generating 50 samples of a 2D vector'\
       'has \n shape = {} \n batch_shape = {}\n event_shape = {} \n and the index'\
       ' of the location of the event is event_dim = {}'.format(mvn_shape, 
         mvn_batch_shape, mvn_event_shape, mvn_event_dim))
@@ -344,25 +416,94 @@ print('A multivariate normal distribution generating 10 samples of a 2D vector'\
 # mechanism for computing the log_prob of a distribution and prepare pyro for
 # gradient computation and thereby inference.
 
+# The sample statement takes as input a unique sample identification name, the
+# distribution, and optional arguments. 
+sn_sample = pyro.sample('sn_sample', sn_dist, obs = None)
+mvn_sample = pyro.sample('mvn_sample', mvn_dist, obs = None)
+plt.scatter(mvn_sample[:,0], mvn_sample[:,1])
+plt.title('Samples from a multivariate normal distribution')
 
+# The obs = None argument tells pyro that only simulation is to be performed
+# and no data is to be used for conditioning the distribution on it. An obs =
+# data statement is only allowed during inference, otherwise pyro complains.
+sn_sample_warning = pyro.sample('sn_sample_warning', sn_dist, obs = torch.tensor([0]))
+print('The obs = data option replaces random sampling with some actual data to'\
+      ' enable gradient computation of e.g. log_probs w.r.t. parameters given'\
+      ' the data. The sample is then equal to the data, here sns_sample_warning = {}'
+      .format(sn_sample_warning))
+
+
+"""
+    5. Tensors as central building blocks
+"""
 
 
 
 
 
 """
-    4. Tensors as central building blocks
-"""
-
-"""
-    5. Overview pyro functionality
+    6. Overview pyro functionality
 """
 
 
+# i) Summary
 
+# We have looked into numpy arrays and pytorch tensors and figured out that
+# pyro benefits from being built on top of pytorch due to being able to perform
+# gradient computations w.r.t. probability distributions. Everything in pyro
+# is built around tensors and sampling statements acting on probability 
+# distributions. pyro's syntax is clean and efficient and suitable for the 
+# construction of complex models.
 
+# pyro offers everything necessary to perform simulation and inference for a
+# broad range of stochastic models. This includes functionality for handling
+# distributions, sampling, diagnostics, and inference. The functionalities are
+# bundled into different submodules as outlines below.
+#
+# pyro.distributions: Submodule is foundational for modeling in pyro. It provides
+#   probability distributions that are building blocks for defining models. 
+#   Enables users to define priors, likelihoods, and posterior distributions.
+#
+# pyro.primitives: Submodule contains core primitives like sample() and param(). 
+#   These are essential for defining models. sample() is used to introduce random
+#   variables representing observed data and latent variables. param is used to 
+#   define trainable parameters .
+#
+# pyro.poutine: pyro's execution model is implemented in the poutine submodule. 
+#   This functionality allows for control and tracking of the relationships 
+#   inside the model. Provides a collection of effect handlers for execution 
+#   tracing, conditioning, and implementing custom inference strategies.
+#
+# pyro.infer: Inference is central to probabilistic programming. Submodule contains
+#   inference algorithms to approximate posterior distributions based on observed data.
+#   Provides Stochastic Variational Inference (SVI), Markov Chain Monte Carlo (MCMC).
+#
+# There are also other submodules like pyro.contrib and pyro.optim but interacting
+# with them will not be important during this tutorial.
+    
 
+# ii) Outlook
 
+# Apart from the motivating initial example, we have only looked at fundamental
+# concepts like distributions and sampling in pyro. We still have not fully 
+# investigated the impact of the pyro syntax on model building and inference
+# is a black box to us for now. In the next two tutorials we will build more
+# complex models and learn how to diagnose models to ensure their meaning aligns
+# with our intent. Afterwards, we will delve deeper into inference and inject
+# complexity into our models. In the end we will have introduced posterior 
+# densities over hidden variables and have trained probability distributions 
+# whose parameters are outputs of a neural network.
+
+# The next tutorial, however will stay modest. We will build stochastic models
+# very similar to the ones in this tutorial but we will understand them better.
+# This will mean looking at the internal representation that pyro builds of a
+# model - the so called execution trace. This will represent everything pyro
+# knows about the relationships between random variables and parameters and can
+# be a bit hard to parse. Nonetheless it is important to understand. Otherwise
+# it is hard to ensure that the models do what we want them to do and that the
+# training data is used responsibly without false inintended assumptions of
+# e.g. independence or normality.
+    
 
 
 
