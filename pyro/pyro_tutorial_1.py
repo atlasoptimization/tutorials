@@ -501,8 +501,8 @@ print('The obs = data option replaces random sampling with some actual data to'\
 # knows about the relationships between random variables and parameters and can
 # be a bit hard to parse. Nonetheless it is important to understand. Otherwise
 # it is hard to ensure that the models do what we want them to do and that the
-# training data is used responsibly without false inintended assumptions of
-# e.g. independence or normality.
+# training data is used responsibly without unintended and undocumented assumptions
+# of e.g. independence or normality.
     
 
 
