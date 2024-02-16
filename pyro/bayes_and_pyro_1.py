@@ -5,7 +5,7 @@ This script is part of a series of tutorials that showcase bayesian concepts
 and use pyro to perform inference and more complicated computations. During these
 tutorials, we will tackle a sequence of problems of increasing complexity that 
 will take us from fitting of distributional parameters to the computation of 
-nontrivial posterior distributions.
+nontrivial posterior distributions.  Use best in conjunction with companion slides.
 The tutorials consist in the following:
     - fit a mean                            (tutorial_1) 
     - compute simple posterior              (tutorial_2)
