@@ -130,7 +130,19 @@ def model_1(observations = None):
     
     return sample_1
     
-    
+
+# iii) Illustrate model in graphical notation
+
+# If you have the appropriate packages installed, you can print out a graphical
+# visualization of the model in the console. This allows you to parse the model
+# architecture quickly and see which parameters, random variables and independence
+# statements the model includes. Random quantities are surrounded by a circle,
+# independence statements indicating repeated sampling are symbolized by a
+# rectangle ( = the 'plate') and parameters are annotated with arrows to show
+# where they exert influence.
+pyro.render_model(model_1, model_args=(), render_distributions=True, render_params=True)
+
+
 
 # iii) Run model forward
 
@@ -276,6 +288,9 @@ print('The sample from model two has the appropriate shape = {}'.format(sample_2
 
 model_2_trace = analyze_model(model= model_2, trace_input = None)
 # Analyze the output carefully to see if the recorded trace mathes what you expect.
+
+# Illustrate model by plotting symbolic representation
+pyro.render_model(model_2, model_args=(), render_distributions=True, render_params=True)
 
 # The log_prob and log_prob sum have shapes [10] and [] respectively reflecting
 # the fact that log_prob assesses the probability of each independent sample and

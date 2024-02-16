@@ -72,7 +72,7 @@ data_dist = pyro.distributions.Normal(loc = mu_true * extension_tensor, scale = 
 
 # ii) Sample from dist to generate data
 
-data = pyro.sample('data', data_dist)
+data = data_dist.sample()
 
 
 

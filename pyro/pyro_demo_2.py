@@ -18,9 +18,9 @@ The tutorials consist in the following:
     - variational autoencoder                   (demo_7)
     - distribution dependent on DCO             (demo 8)
 
-This script will build a stochastic model featuring a univariate Gaussian
-distribution and fit the mean and variance so that the resultant distribution
-is able to explain well the dataset.
+This script will build a stochastic model featuring control flow that depends
+on an unobserved variable. We will perform inference on this model to derive 
+the posterior density on the unobserved random variable.
 
 For this, do the following:
     1. Imports and definitions
@@ -44,13 +44,14 @@ Jemil Avers Butt, Atlas optimization GmbH, www.atlasoptimization.com.
 
 import pyro
 import torch
-
+import copy
 import matplotlib.pyplot as plt
+
 
 
 # ii) Definitions
 
-n_data = 100
+n_data = 1000
 torch.manual_seed(0)
 pyro.set_rng_seed(0)
 
@@ -61,19 +62,30 @@ pyro.set_rng_seed(0)
 """
 
 
-# i) Set up data distribution (=standard normal))
+# i) Set up data distributions
 
-mu_true = torch.zeros([1])
-sigma_true = torch.ones([1])
+mu_dec_true = torch.tensor([1.0])
+mu_high_true = torch.tensor([3.0])
+mu_low_true = torch.tensor([-3.0])
+sigma = torch.tensor([1.0])
 
-extension_tensor = torch.ones([100])
-data_dist = pyro.distributions.Normal(loc = mu_true * extension_tensor, scale = sigma_true)
+dist_decision_true = pyro.distributions.Normal(loc = mu_dec_true, scale = sigma)
+dist_low_true = pyro.distributions.Normal(loc = mu_low_true, scale = sigma)
+dist_high_true = pyro.distributions.Normal(loc = mu_high_true, scale = sigma)
 
 
-# ii) Sample from dist to generate data
+# ii) Sample from dist to generate data. Decision sample decides on which 
+# distribution to use next - then sample from dist_low or dist_high dependent 
+# on decision_sample >=0 / <0
 
-data = pyro.sample('data', data_dist)
-
+data = torch.zeros([n_data])
+decision_true = torch.zeros([n_data])
+for k in range(n_data):
+    decision_true[k] = dist_decision_true.sample() >= 0
+    if decision_true[k] == True:
+        data[k] = dist_high_true.sample()
+    else:
+        data[k] = dist_low_true.sample()    
 
 
 """
@@ -81,17 +93,43 @@ data = pyro.sample('data', data_dist)
 """
 
 
-# i) Define model as normal with mean and var parameters
+# i) Define model by converting the above control flow into a function acting on
+# tensors using pytorch and pyro primitives.
 
 def model(observations = None):
-    mu = pyro.param(name = 'mu', init_tensor = torch.tensor([5.0])) 
-    sigma = pyro.param( name = 'sigma', init_tensor = torch.tensor([5.0]))
+    # Define parameters to be estimated
+    mu_dec = pyro.param(name = 'mu_dec', init_tensor = torch.tensor([0.0]))
+    # mu_high = pyro.param(name = 'mu_high', init_tensor = torch.tensor([3.0]))
+    # mu_low = pyro.param(name = 'mu_low', init_tensor = torch.tensor([-3.0]))
+    mu_high = mu_high_true
+    mu_low = mu_low_true
     
-    obs_dist = pyro.distributions.Normal(loc = mu * extension_tensor, scale = sigma)
-    with pyro.plate(name = 'data_plate', size = n_data, dim = -1):
-        model_sample = pyro.sample('observation', obs_dist, obs = observations)
+    # Distributions
+    dist_decision = pyro.distributions.Normal(loc = mu_dec, scale = sigma)
+    dist_low = pyro.distributions.Normal(loc = mu_low, scale = sigma)
+    dist_high = pyro.distributions.Normal(loc = mu_high, scale = sigma)
 
-    return model_sample
+    # Control flow inside of independence context
+    decision = torch.zeros([n_data])
+    sample = torch.zeros([n_data])
+    for index in pyro.plate('data_plate', size = n_data):
+        # Unobserved random variable decision and observations
+        decision[index] = pyro.sample('decision_{}'.format(index), dist_decision)
+        observations_or_None = observations[index] if observations is not None else None
+        
+        # Control flow
+        if decision[index] >= 0:
+            sample[index] = pyro.sample('sample_{}'.format(index), dist_high, obs = observations_or_None)
+        else: 
+            sample[index] = pyro.sample('sample_{}'.format(index), dist_low, obs = observations_or_None)
+    
+    return sample
+
+
+# Illustrate model by plotting symbolic representation
+# pyro.render_model(model, model_args=(), render_distributions=True, render_params=True)
+
+untrained_sample = copy.copy(model())
 
 
 
@@ -103,13 +141,24 @@ def model(observations = None):
 # i) Set up guide
 
 def guide(observations = None):
-    pass
+    # Define parameters to be estimated
+    mu_dec_guide = pyro.param(name = 'mu_dec_guide', init_tensor = torch.tensor([0.0]))
+    
+    # Distributions
+    dist_decision = pyro.distributions.Normal(loc = mu_dec_guide, scale = sigma)
+    
+    # Sampling decisions
+    decision = torch.zeros([n_data])
+    for index in pyro.plate('data_plate', n_data):
+        decision[index] = pyro.sample('decision_{}'.format(index), dist_decision)
+    
+    return decision
 
 
 # ii) Set up inference
 
 
-adam = pyro.optim.Adam({"lr": 0.1})
+adam = pyro.optim.NAdam({"lr": 0.1})
 elbo = pyro.infer.Trace_ELBO()
 svi = pyro.infer.SVI(model, guide, adam, elbo)
 
@@ -118,6 +167,15 @@ svi = pyro.infer.SVI(model, guide, adam, elbo)
 
 for step in range(100):
     loss = svi.step(data)
+    if step % 10 == 0:
+        print('epoch: {} ; loss : {}'.format(step, loss))
+    else:
+        pass
+
+
+# iv) Sample trained model
+
+trained_sample = copy.copy(model())
 
 
 
@@ -128,46 +186,71 @@ for step in range(100):
 
 # i) Print results
 
-print('True mu = {}, True sigma = {} \n Inferred mu = {:.3f}, Inferred sigma = {:.3f}'
-      .format(mu_true, sigma_true, 
-              pyro.get_param_store()['mu'].item(),
-              pyro.get_param_store()['sigma'].item()))
+for name, value in pyro.get_param_store().items():
+    print(name, pyro.param(name).data.cpu().numpy())
+    
+print('mu_dec_true = {} \n mu_high_true = {} \n mu_low_true = {}'
+      .format(mu_dec_true, mu_high_true, mu_low_true))
 
 
-# ii) Plot data
+# ii) Plot distributions
 
-fig1 = plt.figure(num = 1, dpi = 300)
-plt.hist(data.detach().numpy())
-plt.title('Histogram of data')
+# Creating the figure and subplots
+fig, axs = plt.subplots(3, 1, figsize=(8, 12), dpi = 300)
 
+axs[0].hist(data.detach().numpy(), bins=30, color='skyblue', edgecolor='black')
+axs[0].set_title('Histogram of data')
+axs[1].hist(untrained_sample.detach().numpy(), bins=30, color='lightgreen', edgecolor='black')
+axs[1].set_title('Sampling from untrained model')
+axs[2].hist(trained_sample.detach().numpy(), bins=30, color='salmon', edgecolor='black')
+axs[2].set_title('Sampling from trained model')
 
-# iii) Plot distributions
-
-t = torch.linspace(-3,3,100)
-inferred_dist = pyro.distributions.Normal( loc = pyro.get_param_store()['mu'], 
-                                          scale = pyro.get_param_store()['sigma'])
-
-fig2 = plt.figure(num = 2, dpi = 300)
-plt.plot(t, torch.exp(data_dist.log_prob(t)), color = 'k', label = 'true', linestyle = '-')
-plt.plot(t, torch.exp(inferred_dist.log_prob(t)).detach(), color = 'k', label = 'inferred', linestyle = '--')
-plt.title('True and inferred distributions')
-
+plt.tight_layout()
+plt.show()
 
 
 
 
 
 
+def model(data = None):
+    mu_dec = pyro.param("mu_dec", torch.tensor([1.0]))
+    mu_high = torch.tensor([3.0])
+    mu_low = torch.tensor([-3.0])
+    sigma = torch.tensor([1.0])
+    
+    with pyro.plate("data_plate", size=n_data):
+        # First sample the decision variable
+        decision = pyro.sample("decision", pyro.distributions.Normal(mu_dec, sigma)) >= 0
+        
+        # Use the decision to choose the distribution from which to sample the observed data
+        data_dist = pyro.distributions.Normal(mu_high * decision.float() + mu_low * (~decision).float(), sigma)
+        obs = pyro.sample("obs", data_dist, obs=data)
+# pyro.render_model(model, model_args=(), render_distributions=True, render_params=True)
+def guide(data = None):
+    mu_dec_guide = pyro.param("mu_dec_guide", torch.tensor([0.0]))
+    
+    with pyro.plate("data_plate", size=n_data):
+        decision_guide = pyro.sample("decision", pyro.distributions.Normal(mu_dec_guide, sigma))
+# pyro.render_model(guide, model_args=(), render_distributions=True, render_params=True)      
+ 
+# guide = pyro.infer.autoguide.AutoNormal(model)
+        
+adam_params = {"lr": 0.01}
+optimizer = pyro.optim.Adam(adam_params)
 
+# Setup the inference algorithm
+svi = pyro.infer.SVI(model, guide, optimizer, loss=pyro.infer.Trace_ELBO())
 
-
-
-
-
-
-
-
-
-
-
-
+n_steps = 1000
+# Do gradient steps
+for step in range(n_steps):
+    loss = svi.step(data)
+    if step % 100 == 0:
+        print(f"Step {step} : loss = {loss}")    
+        
+for name, value in pyro.get_param_store().items():
+    print(name, pyro.param(name).data.cpu().numpy())
+    
+print('mu_dec_true = {} \n mu_high_true = {} \n mu_low_true = {}'
+      .format(mu_dec_true, mu_high_true, mu_low_true))
