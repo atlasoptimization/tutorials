@@ -14,15 +14,16 @@ The tutorials consist in the following:
 
 
 This script is to showcase a problem in which temperature measurements are 
-performed on an object with a randomly distributed temperature. The measurements
-are affected by an unknown bias. The goal is to compute an MLE of the bias and 
-to compute the posterior of the true temperature given observations. We will do 
-this by providing the analytical solution and also by emplying pyros inference 
-machinery.
+performed on nultiple objects at multiple locations. The temperature of the
+objects is random exhibiting spatial correlation and the measurements are
+are affected by randomness, too. The goal is to compute distributional parameters 
+and the posterior of the true temperature at some location given observations at 
+other locations. We will do this by computing the true posterior and compare it 
+to the results of pyros inference machinery.
 For this, do the following:
     1. Imports and definitions
     2. Generate synthetic data
-    3. Analytic MLE & posterior
+    3. True posterior
     4. Pyro model and inference
     5. Plots and illustrations
     
@@ -46,12 +47,10 @@ import matplotlib.pyplot as plt
 
 # ii) Definitions
 
-n_data = 20
-n_epochs = 3
+n_data = 100
+n_locs = 3
 n_disc = 100
 
-z_disc = torch.linspace(7, 13, n_disc)
-mu_disc = torch.linspace(-3, 3, n_disc)
 
 torch.manual_seed(0)
 pyro.set_rng_seed(0)
@@ -65,19 +64,33 @@ pyro.set_rng_seed(0)
 
 # i) Define params
 
-mu_z = 10           # 10 degree celsius (deg c) is mean of temperature control
-sigma_z = 1         # 1 deg c is standard deviation of temperature control
-sigma_T = 1         # 1 deg c is standard deviation of measurements
-mu_bias = 2         # 2 deg c is bas of measurement instrument
+# mean of [10,8,12] degree celsius (deg c) at water, mountain, forest locations
+# measurements are unbiased -> mu_epsion = 0 deg c
+mu_z = 1.0 * torch.tensor([[10, 8, 12]])               
+mu_epsilon = torch.zeros([1,3])
+
+# autocorrelated true temperatures and i.i.d. noise
+sigma_z = 1.0 * torch.tensor([[2,1,1],[1,4,2],[1,2,3]])
+sigma_epsilon = 1 * torch.eye(n_locs)
 
 
 # ii) Simulate data
 
 # sample underlying true temperature in deg c, then sample subsequent measurement
-dist_z = pyro.distributions.Normal(mu_z, sigma_z)
-z_true = dist_z.sample([n_epochs,1])         
-dist_data = pyro.distributions.Normal(loc = z_true + mu_bias , scale = sigma_T).expand([n_epochs,n_data])
+dist_z = pyro.distributions.MultivariateNormal(mu_z, sigma_z).expand([n_data])
+z_true = dist_z.sample()         
+dist_data = pyro.distributions.MultivariateNormal(loc = z_true + mu_epsilon ,
+                        covariance_matrix = sigma_epsilon)
 data = dist_data.sample()
+
+
+# iii) Observation for conditioning
+
+# Measurement in water location is given, temperature at mountain and forest
+# location is to be estimated
+data_observation = torch.tensor([11])
+index_observation = [0]
+index_to_estimate = [1,2]
 
 
 
@@ -86,45 +99,25 @@ data = dist_data.sample()
 """
 
 
-# i)  Compute likelihood and prior as functions of z
+# i)  Compute conditional mean and covariance
 
-def likelihood(z, mu):
-    coeff_1 = (1/(sigma_T*torch.sqrt(2*torch.tensor(torch.pi))))
-    coeff_2 = -(1/(2*sigma_T**2))
-    fun_vals_epochs = coeff_1 * torch.exp( coeff_2 * (data - z - mu)**2)
-    fun_vals = torch.prod(fun_vals_epochs, dim = 1)
-    return fun_vals
+# means for water location (w), mountain location (m), forest location (f)
+mu_w = mu_z[0,0]
+mu_mf = mu_z[0,1:3]
 
-def prior(z):
-    coeff_1 = (1/(sigma_z*torch.sqrt(2*torch.tensor(torch.pi))))
-    coeff_2 = -(1/(2*sigma_z**2))
-    fun_val = coeff_1 * torch.exp( coeff_2 * (z - mu_z)**2)
-    fun_vals = fun_val.repeat([n_epochs])
-    return fun_vals
+# covariances for locations (w,m,f) and measurements at location w (Tw)
+sigma_T_T = sigma_z + sigma_epsilon
+sigma_Tw_Tw = sigma_T_T[0,0]
+sigma_mf_w = sigma_z[1:3,0]
+sigma_mf_mf = sigma_z[1:3, 1:3]
 
-likelihood_mat = torch.zeros([n_epochs, n_disc, n_disc])
-prior_mat = torch.zeros([n_epochs, n_disc, n_disc])
+# use equations for conditional mean and conditional covariance of Gaussian
+conditional_mu = mu_mf + sigma_mf_w * (1/(sigma_Tw_Tw)) * (data_observation - mu_w) 
 
 
-for k in range(n_disc):
-    for l in range(n_disc):
-        likelihood_mat[:,k,l] = likelihood(z_disc[k], mu_disc[l])
-        prior_mat[:,k,l] = prior(z_disc[k])
 
+# ii) Construct posterior from mean and covariance
 
-# ii) Compute posterior numerically
-
-nonnormalized_posterior = likelihood_mat*prior_mat
-likelihood_given_mu = (torch.sum(nonnormalized_posterior,1).reshape([n_epochs,1,n_disc]))
-product_likelihoods_given_mu = torch.prod(likelihood_given_mu, dim = 0)
-numerical_posterior = nonnormalized_posterior/(likelihood_given_mu.repeat([1,n_disc,1]) * 6/ n_disc)
-
-max_index_mu = torch.argmax(product_likelihoods_given_mu)
-mu_bias_numerical = mu_disc[max_index_mu]
-
-posterior_z = numerical_posterior[:, :, max_index_mu]
-max_index_z = torch.argmax(posterior_z, 1)
-z_map_graphical = z_disc[max_index_z]
 
 
 
