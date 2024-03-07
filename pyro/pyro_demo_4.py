@@ -188,14 +188,14 @@ def guide(observations = None):
 # i) Set up inference
 
 
-adam = pyro.optim.NAdam({"lr": 0.03})
+adam = pyro.optim.NAdam({"lr": 0.3})
 elbo = pyro.infer.Trace_ELBO()
 svi = pyro.infer.SVI(model, guide, adam, elbo)
 
 
 # ii) Perform svi
 
-for step in range(1000):
+for step in range(10000):
     loss = svi.step(data)
     if step % 100 == 0:
         print('epoch: {} ; loss : {}'.format(step, loss))

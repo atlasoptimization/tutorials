@@ -216,7 +216,6 @@ guide_trace_data.compute_log_prob()
 print(guide_trace_data.format_shapes())
 
 
-
 # iv) Pyro inference
 
 adam = pyro.optim.NAdam({"lr": 0.01})
@@ -234,16 +233,6 @@ for step in range(5000):
 
 
 # v) Conditional model and guide and training
-
-# print all parameters in the variational distribution
-for name, value in pyro.get_param_store().items():
-    print(name, pyro.get_param_store()[name])
-
-# # Set params to fixed by removing the gradient tape
-# for param_name in pyro.get_param_store():
-#     print(param_name)
-#     pyro.get_param_store()[param_name].requires_grad = False
-
     
 # conditioned model is the model but the measurement water site has fixed value
 conditioned_model = pyro.condition(model, data = {'measurement_water' : data_observation})
@@ -271,30 +260,6 @@ def conditioned_guide(observations = None):
 pyro.render_model(conditioned_model, model_args=(), render_distributions=True, render_params=True)  
 pyro.render_model(conditioned_guide, model_args=(), render_distributions=True, render_params=True)  
 
-
-    
-# Optimize the parameters in the conditioned guide
-# adam = pyro.optim.NAdam({"params": [pyro.get_param_store()['conditional_mu_pyro'],
-#                                     pyro.get_param_store()['conditional_sigma_pyro']],
-#                                     "lr": 0.01})
-# adam = pyro.optim.NAdam({'lr' : 0.01})
-# svi = pyro.infer.SVI(conditioned_model, conditioned_guide, adam, elbo)
-# for step in range(5000):
-#     loss = svi.step(None)
-#     if step % 100 == 0:
-#         print('epoch: {} ; loss : {}'.format(step, loss))
-
-# optimizer = torch.optim.NAdam(params = [pyro.get_param_store()['conditional_mu_pyro'],
-#                                     pyro.get_param_store()['conditional_sigma_pyro']],
-#                                     lr = 0.01)
-# for step in range(5000):
-#     optimizer.zero_grad()
-#     loss = pyro.infer.trace_elbo.Trace_ELBO.differentiable_loss(conditioned_model, conditioned_guide)
-#     loss.backward()
-#     optimizer.step()
-#     if step % 100 == 0:
-#         print('epoch: {} ; loss : {}'.format(step, loss))
-
 # Define callback that gives nonzero updates only for conditional distribution params
 def selective_optimization(param_name):
     if "conditional" in param_name:
@@ -311,11 +276,6 @@ for step in range(5000):
     if step % 100 == 0:
         print('epoch: {} ; loss : {}'.format(step, loss_conditional))
     loss_sequence_conditional.append(loss_conditional)
-
-
-# print all parameters in the variational distribution
-for name, value in pyro.get_param_store().items():
-    print(name, pyro.get_param_store()[name])
 
 
 
@@ -343,10 +303,8 @@ ax[0,1].set_title('Inferred covariance for temperature')
 ax[1,1].imshow(sigma_trained + sigma_noise_trained, vmin = 0, vmax = 5)
 ax[1,1].set_title('Inferred covariance for measurements')
 
-
 plt.tight_layout()
 plt.show()
-
 
 
 # ii) Density comparison
@@ -363,7 +321,6 @@ dist_conditional_pyro = pyro.distributions.MultivariateNormal(loc = conditional_
 dist_unconditional_pyro = pyro.distributions.MultivariateNormal(loc = unconditional_mu_pyro[0,1:3],
                                         covariance_matrix = unconditional_sigma_pyro[1:3,1:3])
 
-
 density_conditional_pyro = torch.zeros([n_disc,n_disc])
 density_unconditional_pyro = torch.zeros([n_disc,n_disc])
 for k in range(n_disc):
@@ -372,10 +329,7 @@ for k in range(n_disc):
         density_conditional_pyro[k,l] = torch.exp(dist_conditional_pyro.log_prob(temp_input.flatten()))
         density_unconditional_pyro[k,l] = torch.exp(dist_unconditional_pyro.log_prob(temp_input.flatten()))
 
-
-
 # Plot densities
-
 fig, ax = plt.subplots(2,2, figsize = (10,10), dpi = 300)
 
 ax[0,0].imshow(density_unconditional, extent = [z_disc[0], z_disc[-1], z_disc[-1], z_disc[0]])
@@ -417,15 +371,3 @@ plt.tight_layout()
 plt.show()
 
 
-# iv) Print results
-
-print(mu_z)
-print(conditional_mu)
-
-print(unconditional_mu_pyro)
-print(conditional_mu_pyro)
-
-
-# print('True unconditional_mu = {} \n True conditional mu = {} '\
-#       '\n Pyro unconditional mu = {} \n Pyro conditional mu = {}'
-#       .format(mu_z.numpy().to))
