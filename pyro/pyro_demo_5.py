@@ -136,7 +136,7 @@ class ANN(pyro.nn.PyroModule):
 
 # ii) Invocations and constructions
 
-dim_latent_z = 2
+dim_latent_z = 1
 model_decoder = ANN(dim_latent_z, 5, [n_dim,n_dim])
 guide_encoder = ANN(n_dim, 5, [dim_latent_z, dim_latent_z])
 
@@ -198,14 +198,14 @@ def guide(observations = None):
 # i) Set up inference
 
 
-adam = pyro.optim.NAdam({"lr": 0.001})
+adam = pyro.optim.NAdam({"lr": 0.03})
 elbo = pyro.infer.Trace_ELBO()
 svi = pyro.infer.SVI(model, guide, adam, elbo)
 
 
 # ii) Perform svi
 
-for step in range(10000):
+for step in range(3000):
     loss = svi.step(data)
     if step % 100 == 0:
         print('epoch: {} ; loss : {}'.format(step, loss))
@@ -224,7 +224,7 @@ trained_sample = copy.copy(model())
 """
 
 
-# ii) Plot distributions
+# i) Plot distributions
 
 fig1, axs = plt.subplots(3, 1, figsize=(8, 12), dpi=300)
 
@@ -248,58 +248,6 @@ plt.tight_layout()
 plt.show()
 
 
-# Creating the figure and subplots for sample visualization
-# fig1, axs = plt.subplots(3, 1, figsize=(8, 12), dpi=300)
-
-# # Plotting the realizations
-# axs[0].plot(time, data.detach().numpy().T)
-# axs[0].set_title('Data')
-# axs[0].set_xlabel('Time')
-# axs[0].set_ylabel('Value')
-
-# axs[1].plot(time, untrained_sample.detach().numpy().T)
-# axs[1].set_title('Untrained model')
-# axs[1].set_xlabel('Time')
-# axs[1].set_ylabel('Value')
-
-# axs[2].plot(time, trained_sample.detach().numpy().T)
-# axs[2].set_title('Trained model')
-# axs[2].set_xlabel('Time')
-# axs[2].set_ylabel('Value')
-
-# plt.tight_layout()
-# plt.show()
-
-# # Creating the figure and subplots for covariance matrices
-# fig2, axs = plt.subplots(1, 3, figsize=(12, 8), dpi=300)
-
-# # Plotting the cov mats
-# axs[0].imshow(sigma_true)
-# axs[0].set_title('True Cov')
-
-# axs[1].imshow(untrained_sigma.detach())
-# axs[1].set_title('Untrained Cov')
-
-# axs[2].imshow(trained_sigma.detach())
-# axs[2].set_title('Trained Cov')
-
-# plt.tight_layout()
-# plt.show()
-
-# # Illustrate true z and posterior distributions
-
-# n_showcase = 5
-# n_sampling = 20
-# z_q = torch.zeros([n_sampling, n_showcase, 2])
-# for k in range(n_sampling):
-#     z_q[k,:,:], mu_q , sigma_q = guide(data[0:n_showcase,:])
-
-# fig3 = plt.figure(3, dpi = 300)
-# plt.scatter(z_q.detach()[:,:,0], z_q.detach()[:,:,1], color = [0.5,0.5,0.5], label = 'Posterior sample')
-# plt.scatter(z_true[:n_showcase,0], z_true[:n_showcase,1], color = 'k', label = 'True latent')
-# plt.scatter(mu_q.detach()[:,0], mu_q.detach()[:,1], color = 'r', label = 'Posterior mean')
-# plt.title('Latent vars and posteriors')
-# plt.legend()
 
 
 
