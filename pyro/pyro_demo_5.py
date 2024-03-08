@@ -205,7 +205,7 @@ svi = pyro.infer.SVI(model, guide, adam, elbo)
 
 # ii) Perform svi
 
-for step in range(3000):
+for step in range(1000):
     loss = svi.step(data)
     if step % 100 == 0:
         print('epoch: {} ; loss : {}'.format(step, loss))
@@ -224,11 +224,18 @@ trained_sample = copy.copy(model())
 """
 
 
-# i) Plot distributions
+# i) Illustrate model and guide 
+# (execute following lines one by one in console to render)
 
-fig1, axs = plt.subplots(3, 1, figsize=(8, 12), dpi=300)
+pyro.render_model(model, model_args=(), render_distributions=True, render_params=True)
+pyro.render_model(guide, model_args=(data,), render_distributions=True, render_params=True)
+
+
+# ii) Plot distributions
 
 # Plotting the realizations
+fig1, axs = plt.subplots(3, 1, figsize=(8, 12), dpi=300)
+
 axs[0].scatter(data[:,0].detach(), data[:,1].detach())
 axs[0].set_title('Original data')
 axs[0].set_xlabel('x_1')
@@ -248,6 +255,25 @@ plt.tight_layout()
 plt.show()
 
 
+# Plotting the distribution of latent_z's
+x_obs_0 = torch.tensor([0.0,0.0]).reshape([1,2])
+x_obs_1 = torch.tensor([1.0,1.0]).reshape([1,2])
+x_obs_2 = torch.tensor([-1.0,-1.0]).reshape([1,2])
+latent_z_0 = guide(x_obs_0)
+latent_z_1 = guide(x_obs_1)
+latent_z_2 = guide(x_obs_2)
+
+
+fig2 = plt.figure(figsize=(6, 4), dpi=300)
+
+plt.hist(latent_z_0.detach().numpy(), density = True, label = 'observed x = [0,0]')
+plt.hist(latent_z_1.detach().numpy(), density = True, label = 'observed x = [1,1]')
+plt.hist(latent_z_2.detach().numpy(), density = True, label = 'observed x = [-1,-1]')
+plt.title("Histograms for latent_z's conditioned on observations")
+plt.legend()
+
+plt.tight_layout()
+plt.show()
 
 
 
