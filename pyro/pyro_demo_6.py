@@ -103,7 +103,7 @@ data = dist_true.sample()
 
 # i) Auxiliary constructions
 
-# Construct squared exponential covariance as an ingredient to the prior
+# Construct exponential covariance as an ingredient to the prior
 sigma_prior = torch.zeros([n_time,n_time])
 def cov_fun_prior(s,t):
     cov_val = 1*torch.exp(-torch.abs(s - t)/ 0.1)
@@ -204,10 +204,34 @@ sample_trained = copy.copy(model(observations = None, gamma = gamma_trained))
 posterior_trained = copy.copy(guide())
 
 
+
 """
     5. Interpolation
 """
 
+
+# i) Subsample data to generate observation
+
+sample_index = np.linspace(20,80,4).astype(int)
+sample_time = time[sample_index]
+data_estimation = data[0,:][sample_index]
+data_estimation_true = data[0,:]
+
+
+# ii) Estimate using sigma_true, sigma_untrained, sigma_trained
+
+# using true covariance
+sigma_true_obs = sigma_true[np.ix_(sample_index, sample_index)]
+sigma_true_est = sigma_true[:,sample_index]
+est_sigma_true = sigma_true_est @ torch.linalg.pinv(sigma_true_obs) @ data_estimation
+
+sigma_untrained_obs = sigma_untrained[np.ix_(sample_index, sample_index)]
+sigma_untrained_est = sigma_untrained[:,sample_index]
+est_sigma_untrained = sigma_untrained_est @ torch.linalg.pinv(sigma_untrained_obs) @ data_estimation
+
+sigma_trained_obs = sigma_trained[np.ix_(sample_index, sample_index)]
+sigma_trained_est = sigma_trained[:,sample_index]
+est_sigma_trained = sigma_trained_est @ torch.linalg.pinv(sigma_trained_obs) @ data_estimation
 
 
 
@@ -226,16 +250,17 @@ plt.title('Loss during computation')
 # ii) Showcase data and model
 
 fig, ax = plt.subplots(3,1, figsize = (10,10))
-ax[0].plot(data.T)
+ax[0].plot(time, data.T)
 ax[0].set_title('Original data')
 
-ax[1].plot(sample_untrained.detach().T)
+ax[1].plot(time, sample_untrained.detach().T)
 ax[1].set_title('Samples of model pre-training')
 
-ax[2].plot(sample_trained.detach().T)
+ax[2].plot(time, sample_trained.detach().T)
 ax[2].set_title('Samples of model post-training')
 plt.tight_layout()
 plt.show()
+
 
 # iii) Plot parameters
 
@@ -255,3 +280,26 @@ ax[1,2].imshow(gamma_trained.detach())
 ax[1,2].set_title('gamma post-training')
 plt.tight_layout()
 plt.show()
+
+
+# iv) Showcase estimation
+
+fig, ax = plt.subplots(3,1, figsize = (10,10))
+ax[0].plot(time, data_estimation_true, label = 'True data')
+ax[0].scatter(sample_time, data_estimation, label = 'observed data', color = 'k')
+ax[0].plot(time, est_sigma_true, label = 'Estimation using true covariance')
+ax[0].set_title('Original data and estimation using true covariance')
+
+ax[1].scatter(sample_time, data_estimation, label = 'observed data', color = 'k')
+ax[1].plot(time, est_sigma_untrained.detach(), label = 'Estimation using untrained covariance')
+ax[1].set_title('Estimation using untrained covariance')
+
+ax[2].scatter(sample_time, data_estimation, label = 'observed data', color = 'k')
+ax[2].plot(time, est_sigma_trained.detach(), label = 'Estimation using trained covariance')
+ax[2].set_title('Estimation using trained covariance')
+
+plt.legend()
+plt.tight_layout()
+plt.show()
+
+
