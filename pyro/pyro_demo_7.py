@@ -30,8 +30,7 @@ For this, do the following:
     3. Auxiliary definitions VAE
     4. Set up entire VAE
     5. Perform inference
-    6. Investigations
-    7. Plots and illustrations
+    6. Plots and illustrations
     
 The script is meant solely for educational and illustrative purposes. Written by
 Jemil Avers Butt, Atlas optimization GmbH, www.atlasoptimization.com.
@@ -180,13 +179,7 @@ class VAE(pyro.nn.PyroModule):
     # Initialize VAE by invoking superclass and integrating basic data
     def __init__(self):
         super().__init__()
-        
-        # # basic data
-        # self.dim_input = dim_input
-        # self.dim_hidden = dim_hidden
-        # self.dim_bottleneck = dim_bottleneck
-        # self.dim_output = dim_output
-        
+                
         # integrate ann's
         self.encoder = encoder
         self.decoder = decoder
@@ -224,7 +217,7 @@ class VAE(pyro.nn.PyroModule):
             latent_code = self.encoder(input_images)
             mu_z_post = latent_code[:,0:dim_bottleneck]
             # sigma_z_post = torch.exp(latent_code[:,dim_bottleneck:2*dim_bottleneck])
-            sigma_z_post = torch.ones(mu_z_post.shape)
+            sigma_z_post = 0.1*torch.ones(mu_z_post.shape)
             dist_z_post = pyro.distributions.Normal(loc = mu_z_post, scale = sigma_z_post).to_event(1)
             z_samples = pyro.sample('latent_z', dist_z_post)
         
@@ -271,7 +264,7 @@ images_resimu_untrained_type3 = copy.copy(vae.resimulate_image(data[2*n_data,:],
 # i) Set up inference
 
 
-adam = pyro.optim.NAdam({"lr": 0.001})
+adam = pyro.optim.NAdam({"lr": 0.003})
 elbo = pyro.infer.Trace_ELBO()
 svi = pyro.infer.SVI(vae.model, vae.guide, adam, elbo)
 
@@ -279,7 +272,7 @@ svi = pyro.infer.SVI(vae.model, vae.guide, adam, elbo)
 # ii) Perform svi
 
 loss_sequence = []
-for step in range(1000):
+for step in range(10000):
     loss = svi.step(data)
     loss_sequence.append(loss)
     if step % 100 == 0:
@@ -298,18 +291,7 @@ images_resimu_trained_type3 = copy.copy(vae.resimulate_image(data[2*n_data,:], n
 
 
 """
-    6. Investigations
-"""
-
-
-# i) Subsample data to generate observation
-
-
-
-
-
-"""
-    7. Plots and illustrations
+    6. Plots and illustrations
 """
 
 
@@ -329,7 +311,7 @@ plt.title('Loss during computation')
 
 # iii) Showcase data
 
-fig, ax = plt.subplots(3,3, figsize = (10,10))
+fig, ax = plt.subplots(3,3, figsize = (10,10), dpi = 300)
 ax[0,0].imshow(data[0,:].reshape([n_space,n_space]))
 ax[0,0].set_title('Original data - type 1')
 ax[0,1].imshow(data[1,:].reshape([n_space,n_space]))
@@ -351,7 +333,7 @@ plt.show()
 
 # iv) Showcase trained and untrained resimulations
 
-fig, ax = plt.subplots(3,7, figsize = (15,5))
+fig, ax = plt.subplots(3,7, figsize = (15,5), dpi = 300)
 # first row, type I
 ax[0,0].imshow(data[0,:].reshape([n_space,n_space]))
 ax[0,0].set_title('Original data - type 1')
@@ -392,3 +374,12 @@ plt.tight_layout()
 plt.show()
 
 
+# vi) Showcase distribution of hidden variables
+
+z_loc, z_scale = vae.encoder(data)[:,0:dim_bottleneck].detach().numpy(),\
+        vae.encoder(data)[:,dim_bottleneck : 2*dim_bottleneck].detach().numpy()
+fig, ax = plt.subplots(2,1, figsize = (10,10), dpi = 300)
+ax[0].hist(z_loc)
+ax[0].set_title('Distribution of latent variables; colors indicating dimension')
+ax[1].scatter(z_loc[:,0], z_loc[:,1])
+ax[1].set_title('Scatterplot of latent variables')
