@@ -6,16 +6,14 @@ for the purpose of classifying some timeseries. An exemplary solution is also
 provided; however the idea of the script is to use the commands and building
 blocks found in the pytorch_tutorial series to assemble a solution. The goal
 is for you to learn to set up a neural network, define a loss function, train
-the resulting net, investigate performance, and illustrate the features learned
-by the net.
+the resulting net, and investigate its performance.
 
 For this, you will do the following:
     1. Imports and definitions
     2. Generate data
     3. Setup neural network class       <-- your task
     4. Train neural network             <-- your task
-    5. Investigate activation triggers  <-- your task
-    6. Plots and illustrations
+    5. Plots and illustrations
     
 The script is meant solely for educational and illustrative purposes. Written by
 Jemil Avers Butt, Atlas optimization GmbH, www.atlasoptimization.com.
@@ -33,7 +31,9 @@ Jemil Avers Butt, Atlas optimization GmbH, www.atlasoptimization.com.
 import torch
 import numpy as np
 import copy
+import seaborn as sns
 import matplotlib.pyplot as plt
+from sklearn.metrics import confusion_matrix
 
 
 # ii) Definitions
@@ -117,17 +117,15 @@ labels_reshaped_test = labels_reshaped[train_size :, :]
 
 
 # Now you need to come up with some code yourself. The comments are meant to give
-# some guiderails in constructing the ANN class.
-
-# Write your own stuff starting from here : ----------------------------------
-
-# Define ANN class
+# some guiderails in constructing the ANN class. It is recommended to steal 
+# heavily from the previous tutorials.
+#
 # 1. Define your class name and inheritance
 # 2. Initialize the class
 # 3. Define the layers
 # 4. Define the result of the forward pass
 #
-# The result will look a bit like the following blueprint that you need to adapt"
+# The result will look a bit like the following blueprint that you need to adapt:
 # class ANN(ClassToInheritFrom):
 #       def __init__(self, your inputs):
 #           super().__init__()
@@ -142,12 +140,34 @@ labels_reshaped_test = labels_reshaped[train_size :, :]
 #           hidden_2 = ...
 #           class_probs = self.nonlinearity(hidden_2)
 
+# Write your own stuff starting from here : ----------------------------------
+
+
+
 
 # Then you need to instantiate one neural network with appropriate dimensions
 # by calling the class with some input arguments.
 
 
 # You can now stop writing your own stuff for section 3. ---------------------
+
+# Since training is only going to happen in section 4, it might be a bit hard
+# to immediately see if you did everything correctly. You can do some initial
+# sanity checks by printing the neural network and calling it on timeseries_train.
+# The expected result is:
+# print(classification_ann)
+# ANN(
+#   (fc1): Linear(in_features=SomeNumber, out_features=SomeNumber, bias=True)
+#   (fc2): Linear(in_features=SomeNumber, out_features=2, bias=True)
+#   (sigmoid): Sigmoid()
+# classification_ann(timeseries_train)
+#         tensor([[SomeNumber, SomeNumber],
+#                     ...         ...
+#                 [SomeNumber, SomeNumber]], grad_fn=<SigmoidBackward0>)
+#
+# It is quite probable that the class construction and applying the ann to the
+# timeseries produces an error. Try to follow the error message and fix the bug
+# - this is a great exercise.
 
 
 
@@ -156,21 +176,123 @@ labels_reshaped_test = labels_reshaped[train_size :, :]
 """
 
 
-"""
-    5. Investigate activation triggers  <-- your task
-"""
+# To train the neural network, you have to set up an pytorch optimizer and then
+# call it in a loop to have it adjust the parameters in the model by following
+# the gradient of the loss function. This means, you have to implement a setup
+# procedure and a training loop and requires multiple decisions as the specific
+# optimizer, learning rate and the loss function measuring dissatisfaction with
+# class predictions can be freely determined by you. This section is much easier
+# than the previous one as no classes need to be built. But you will have to 
+# consult the pytorch documentation and to find about about optimizers and losses.
+# Also, you might have to come back to this section later on after some initial
+# successful runs of the program to experiment with e.g. the learning rate.
+
+# Now you need to come up with some code yourself, the comments again provide
+# some structure that you can concretize to create some working code. 
+
+# The result will look a bit like the following sequence:
+
+# i) Set up optimizer    
+# optimizer = torch.optim.SomeOptimizer(ann_parameters, lr = SomeLearningrate) 
+# loss_fun = torch.nn.SomeClassificationLoss()
+#
+# ii) Optimize
+# for step in range(NumberOfSteps):
+#     # Zero the gradients
+#     optimizer.zero_grad()      
+# 
+#     # compute loss, gradients, then optimization step
+#     loss = loss_fun(classification_ann(timeseries_train), labels_reshaped_train)    
+#     loss.backward()
+#     optimizer.step()
+# 
+#     # print the loss value 
+#     if step % 100 == 0:
+#         print(f"Step {step+1}, Loss {loss.item()}")
+
+# Write your own stuff starting from here : ----------------------------------
+
+# i) Set up optimizer
+
+
+# ii) Optimize
+
+
+# You can now stop writing your own stuff for section 4. ---------------------
 
 
 
 """
-    6. Plots and illustrations
+    5. Plots and illustrations
 """
+
+
+# i) Plot of the loss on train dataset and test dataset
+
+fig, axs = plt.subplots(1,2,figsize = (10,5), dpi = 300)
+axs[0].plot(loss_history)
+axs[0].set_xlabel('Optimizer steps')
+axs[0].set_ylabel('Classification loss')
+axs[0].set_title('Loss on training dataset')
+
+# We now want to see how the accuracy actually developed during the training on
+# the test dataset. Normally you would not do this as the training loop should
+# have 0 exposure to the test dataset but here we just want to illustrate the
+# potential impact of overfitting.
+axs[1].plot(loss_history_test)
+axs[0].set_xlabel('Optimizer steps')
+axs[0].set_ylabel('Classification loss')
+axs[0].set_title('Loss on test dataset')
+
+
+# ii) Plot confusion matrix
+# We want to show how successful our classifier was. To this end, we plot the 
+# confusion matrix which quantifies for both classes how often they were identified
+# correctly and how often some type of confusion occured.
+class_probs = classification_ann(timeseries_test)
+_, predicted_classes = torch.max(class_probs,1)
+_, true_classes = torch.max(labels_reshaped_test,1)
+cm = confusion_matrix(true_classes.numpy(), predicted_classes.numpy())
+# Plotting the confusion matrix
+fig, ax = plt.subplots(figsize=(5, 5))
+sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', square=True,
+            xticklabels=['Class 0', 'Class 1'],
+            yticklabels=['Class 0', 'Class 1'])
+plt.ylabel('Actual')
+plt.xlabel('Predicted')
+plt.title('Confusion Matrix')
+plt.show()
+
+
+
+"""
+    Additional tasks and questions
+"""
+
+
+# What type of loss did you choose and which alternatives might exist?
+
+# Play around with the learning rate to gauge its impact on the training
+
+# Which quantity could you modify to reduce/increase the risk of overfitting?
+
+# Which mitigation strategies do exist to reduce overfitting?
+
+# Introduce a new method to the ANN class, it should plot the weights in the ANN.
+
+# If you think about image classification, what is the role of the max impact
+# features in that setting? Could you imagine how they look like there?
+
 
 
 
 """ 
-    7. Exemplary solution ----------------------------------------------------
+    6. Exemplary solution 
 """
+
+
+# ---------SPOILERS BELOW, TRY WITHOUT EXEMPLARY SOLUTION FIRST----------------
+
 
 
 # For section 3: Define the neural network class and invoke an instance. 
@@ -231,7 +353,8 @@ optimizer = torch.optim.Adam(classification_ann.parameters(), lr=0.01)
 # We choose binary cross entropy as loss; it is a standard loss for binary 
 # classification tasks
 loss_fun = torch.nn.BCELoss()
-loss_history = []
+loss_history_train = []
+loss_history_test = []
 
 
 # ii) Optimize
@@ -248,15 +371,13 @@ for step in range(1000):
     loss.backward()
     # update the weights, record new parameters and loss
     optimizer.step()
-    loss_history.append(loss.item())
+    loss_history_train.append(loss.item())
+    loss_history_test.append(loss_fun(classification_ann(timeseries_test), 
+                                      labels_reshaped_test).item())
     
     # print the loss value and the value of x at specifix steps
     if step % 100 == 0:
         print(f"Step {step+1}, Loss {loss.item()}")
-
-
-
-
 
 
 
