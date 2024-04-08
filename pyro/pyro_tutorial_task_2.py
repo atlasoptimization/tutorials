@@ -42,6 +42,7 @@ Jemil Avers Butt, Atlas optimization GmbH, www.atlasoptimization.com.
 
 import torch
 import pyro
+import copy
 
 import matplotlib.pyplot as plt
 
@@ -49,8 +50,8 @@ import matplotlib.pyplot as plt
 # ii) Definitions
 
 torch.manual_seed(0)
-n_elements = 2
-n_meas = 5
+n_elements = 5
+n_meas = 20
 
 
 
@@ -72,9 +73,9 @@ n_meas = 5
 
 # i) Set up ground truth parameters
 
-# Elements are 1 m long and production errors have standard deviation of 1 cm
+# Elements are 1 m long and production errors have standard deviation of 5 cm
 mu_prod_true = 1
-sigma_prod_true = 0.01
+sigma_prod_true = 0.05
 sigma_meas = 0.01
 
 
@@ -101,49 +102,6 @@ dataset_measurements = measurement_distribution.sample([n_meas]).T
 """
     3. Set up stochastic model      <--- your task
 """
-
-# i) Define the model
-
-def model(observations = None):
-    # Declare parameters
-    mu_prod = pyro.param("mu_prod", init_tensor = torch.tensor(0.0))
-    sigma_prod = pyro.param("sigma_prod", init_tensor = torch.tensor(1.0))
-    
-    # Define production distribution & sample independently
-    extension_tensor_1 = torch.ones([n_elements,1])
-    prod_dist = pyro.distributions.Normal(loc = mu_prod * extension_tensor_1,
-                                          scale = sigma_prod)
-    
-    with pyro.plate("element_plate", size = n_elements, dim = -2):
-        element_lengths = pyro.sample("element_lengths", prod_dist)
-        
-        # define measurement distribution and sample for each element multiple times
-        extension_tensor_2 = torch.ones([1,n_meas])
-        meas_dist = pyro.distributions.Normal(loc = element_lengths * extension_tensor_2,
-                                              scale = sigma_meas)
-        with pyro.plate("measurement_plate", size = n_meas, dim = -1):
-            measurements = pyro.sample("measurements", meas_dist, obs = observations)
-            
-    return measurements
-
-
-# ii) Define the guide
-
-# Variational distribution
-def guide(observations = None):
-    # Declare parameters (n_elements univariate normal posterior distributions)
-    mu_prod_post = pyro.param("mu_prod_post", init_tensor = torch.zeros([n_elements]))
-    sigma_prod_post = pyro.param("sigma_prod_post", init_tensor = torch.ones([n_elements]))
-    
-    # Proposal distribution for posterior
-    prod_post_dist = pyro.distributions.Normal(loc = mu_prod_post,
-                                               scale = sigma_prod_post)
-    
-    # sampling the latent variable element_lengths
-    with pyro.plate('element_plate', size = n_elements, dim = -1):
-        element_lengths = pyro.sample("element_lengths", prod_post_dist)
-
-    return element_lengths
 
 
 # You now want to build your stochastic model in pyro. This requires setting up
@@ -199,21 +157,30 @@ def guide(observations = None):
 """
 
 
-
-
-# ii) Set up Optimization options
+# i) Set up Optimization options
 
 n_iter = 1000
-adam = pyro.optim.Adam({"lr": 0.1})
+adam = pyro.optim.Adam({"lr": 0.01})
 elbo = pyro.infer.Trace_ELBO()
 svi = pyro.infer.SVI(model, guide, adam, elbo)
 
 
-# iii) Inference and print results
+# ii) Inference and print results
 
+loss_sequence = []
+mu_est_sequence = []
+sigma_est_sequence = []
 
+# Iterate and train
 for step in range(n_iter):
     loss = svi.step(dataset_measurements)
+    
+    # Attach results
+    loss_sequence.append(loss)
+    mu_est_sequence.append(copy.copy(pyro.get_param_store()['mu_prod'].detach().numpy()))
+    sigma_est_sequence.append(copy.copy(pyro.get_param_store()['sigma_prod'].detach().numpy()))
+    
+    # Print out loss
     if step % 100 == 0:
         print('epoch: {} ; loss : {}'.format(step, loss))
     else:
@@ -229,17 +196,67 @@ for step in range(n_iter):
 
 # i) Plot training progress
 
-# iter_steps = torch.linspace(0, n_iter-1, n_iter)
-# fig, axs = plt.subplots(1,2, figsize = (10,5), dpi = 300)
-# axs[0].plot(iter_steps, mu_est_sequence)
-# axs[0].plot(iter_steps, mu_true*torch.ones([n_iter]))
-# axs[0].set_title('Estimated mu')
-# axs[0].set_xlabel('Iterations')
+# evolution of loss
+iter_steps = torch.linspace(0, n_iter-1, n_iter)
+plt.figure(1, dpi = 300)
+plt.plot(iter_steps, loss_sequence)
+plt.title('Loss over iteration nr.')
+plt.xlabel('Iterations')
+
+# print out inferred parameters
+print('The true mean and std of the production process are {:.3f}, {:.3f} . \n'
+      'The inferred ones by pyro are {:.3f}, {:.3f}'
+      .format(mu_prod_true, sigma_prod_true, pyro.get_param_store()['mu_prod'],
+              pyro.get_param_store()['sigma_prod']))
+
+# evolution of parameter estimates
+fig, axs = plt.subplots(1,2, figsize = (10,5), dpi = 300)
+axs[0].plot(iter_steps, mu_est_sequence, label = 'estimated mu')
+axs[0].plot(iter_steps, mu_prod_true*torch.ones([n_iter]), label = 'true mu')
+axs[0].set_title('Estimated mu')
+axs[0].set_xlabel('Iterations')
+axs[0].legend()
     
-# axs[1].plot(iter_steps, sigma_est_sequence)
-# axs[1].plot(iter_steps, sigma_true*torch.ones([n_iter]))
-# axs[1].set_title('Estimated sigma')
-# axs[1].set_xlabel('Iterations')
+axs[1].plot(iter_steps, sigma_est_sequence, label = 'estimated sigma')
+axs[1].plot(iter_steps, sigma_prod_true*torch.ones([n_iter]), label = 'true sigma')
+axs[1].set_title('Estimated sigma')
+axs[1].set_xlabel('Iterations')
+axs[1].legend()
+
+
+# ii) Plot posterior distributions
+
+n_disc = 100
+x_disc = torch.linspace(0.9, 1.1, n_disc)
+n_illu = 5 if 5 <= n_elements else n_elements
+
+# Inferences from pyro
+post_densities = torch.zeros([n_illu, n_disc])
+mu_post = pyro.get_param_store()['mu_prod_post'].detach()
+sigma_post = pyro.get_param_store()['sigma_prod_post'].detach()
+
+# Inferences from solving by hand
+empirical_densities = torch.zeros([n_illu, n_disc])
+empirical_means = torch.mean(dataset_measurements, dim = 1)
+empirical_stds = torch.std(dataset_measurements, dim = 1)/torch.sqrt(torch.tensor(n_meas))
+
+# Build densities
+for k in range(n_illu):
+    temp_density_pyro = torch.exp(pyro.distributions.Normal(mu_post[k], sigma_post[k]).log_prob(x_disc))
+    temp_density_empirical = torch.exp(pyro.distributions.Normal(empirical_means[k], empirical_stds[k]).log_prob(x_disc))
+    post_densities[k,:] = temp_density_pyro
+    empirical_densities[k,:] = temp_density_empirical
+    
+fig, axs = plt.subplots(2,1, figsize = (5,10), dpi =300)
+axs[0].plot(x_disc.repeat([n_illu,1]).T, post_densities.T)
+axs[0].set_xlabel('length in m')
+axs[0].set_title('posterior densities by pyro')
+
+axs[1].plot(x_disc.repeat([n_illu,1]).T, empirical_densities.T)
+axs[1].set_xlabel('length in m')
+axs[1].set_title('posterior densities by hand')
+
+
 
 
 
@@ -247,7 +264,9 @@ for step in range(n_iter):
     Additional tasks and questions
 """
 
-
+# Interpret the output of the model inspection with pyro.poutine.trace.
+# You can use: print(pyro.poutine.trace(model).get_trace(None).format_shapes())
+#         and: print(pyro.poutine.trace(model).get_trace(None).nodes)
 
 
 
@@ -265,19 +284,48 @@ for step in range(n_iter):
 # # For section 3: Define the model and guide functions 
 
 
-# # i) Defining the model 
+# i) Define the model
 
-# def model(observations = None):
-#     # Declare parameters
-#     mu = pyro.param(name = 'mu', init_tensor = torch.tensor([0.0]))
-#     sigma = pyro.param(name = 'sigma', init_tensor = torch.tensor([1.0]))
+def model(observations = None):
+    # Declare parameters
+    mu_prod = pyro.param("mu_prod", init_tensor = torch.tensor(0.0))
+    sigma_prod = pyro.param("sigma_prod", init_tensor = torch.tensor(1.0),
+                            constraint = pyro.distributions.constraints.positive)
     
-#     # Declare distribution and sample n_data independent samples, condition on observations
-#     model_dist = pyro.distributions.Normal(loc = mu, scale = sigma)
-#     with pyro.plate('batch_plate', size = n_data):    
-#         model_sample = pyro.sample('model_sample', model_dist, obs = observations)
+    # Define production distribution & sample independently
+    extension_tensor_1 = torch.ones([n_elements,1])
+    prod_dist = pyro.distributions.Normal(loc = mu_prod * extension_tensor_1,
+                                          scale = sigma_prod)
     
-#     return model_sample
+    with pyro.plate("element_plate", size = n_elements, dim = -2):
+        element_lengths = pyro.sample("element_lengths", prod_dist)
+        
+        # define measurement distribution and sample for each element multiple times
+        extension_tensor_2 = torch.ones([1,n_meas])
+        meas_dist = pyro.distributions.Normal(loc = element_lengths * extension_tensor_2,
+                                              scale = sigma_meas)
+        with pyro.plate("measurement_plate", size = n_meas, dim = -1):
+            measurements = pyro.sample("measurements", meas_dist, obs = observations)
+            
+    return measurements
 
+
+# ii) Define the guide
+
+# Variational distribution
+def guide(observations = None):
+    # Declare parameters (n_elements univariate normal posterior distributions)
+    mu_prod_post = pyro.param("mu_prod_post", init_tensor = torch.zeros([n_elements,1]))
+    sigma_prod_post = pyro.param("sigma_prod_post", init_tensor = torch.ones([n_elements,1]))
+    
+    # Proposal distribution for posterior
+    prod_post_dist = pyro.distributions.Normal(loc = mu_prod_post,
+                                               scale = sigma_prod_post)
+    
+    # sampling the latent variable element_lengths
+    with pyro.plate('element_plate', size = n_elements, dim = -2):
+        element_lengths = pyro.sample("element_lengths", prod_post_dist)
+
+    return element_lengths
 
 
