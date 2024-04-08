@@ -143,10 +143,14 @@ labels_reshaped_test = labels_reshaped[train_size :, :]
 # Write your own stuff starting from here : ----------------------------------
 
 
+# YOUR OWN CODE
 
 
 # Then you need to instantiate one neural network with appropriate dimensions
 # by calling the class with some input arguments.
+
+
+# YOUR OWN CODE
 
 
 # You can now stop writing your own stuff for section 3. ---------------------
