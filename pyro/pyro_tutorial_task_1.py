@@ -5,7 +5,7 @@ This script provides tasks related to the estimation of mean and variance of
 a simple univariate gaussian distribution based on some observed data. An exemplary
 solution is also provided; however the idea of the script is to use the commands
 and building blocks found in the pyro_tutorial series to assemble a solution. 
-The goal is for you to learn to set up a stocahstic model, define an inference 
+The goal is for you to learn to set up a stochastic model, define an inference 
 scheme, and fit the model to some data.
 
 For this, you will do the following:
@@ -14,6 +14,11 @@ For this, you will do the following:
     3. Setup stochastic model       <-- your task
     4. Fit model to data
     5. Plots and illustrations
+    
+For the purpose of this task, think of a measurement device measuring the length
+of some object several times; each measurement results in one number and they 
+are all performed in the same manner. From the observations, infer the expected
+value and the spread of individual measurements.
     
 The script is meant solely for educational and illustrative purposes. Written by
 Jemil Avers Butt, Atlas optimization GmbH, www.atlasoptimization.com.
@@ -188,6 +193,8 @@ axs[1].set_xlabel('Iterations')
 
 
 # Interpret the output of the model inspection with pyro.poutine.trace.
+# You can use: print(pyro.poutine.trace(model).get_trace(None).format_shapes())
+#         and: print(pyro.poutine.trace(model).get_trace(None).nodes)
 
 # Which other probability distributions does pyro support? Try to get a list!
 # You can use: for name, attr in inspect.getmembers(pyro.distributions): print(name)
@@ -222,7 +229,7 @@ axs[1].set_xlabel('Iterations')
 
 
 
-# # For section 3: Define the model and guide functions 
+# For section 3: Define the model function
 
 
 # # i) Defining the model 
