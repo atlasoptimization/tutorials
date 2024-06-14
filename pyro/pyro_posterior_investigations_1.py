@@ -47,7 +47,6 @@ import numpy as np
 import torch
 import pyro
 
-import inspect
 
 import matplotlib.pyplot as plt
 
