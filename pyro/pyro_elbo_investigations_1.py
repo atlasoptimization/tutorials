@@ -156,6 +156,9 @@ for k in range(500):
 #            = p_theta(x|z)                 (likelihod)
 # where theta = params, x = data, and z = latents are empty .
 
+
+# ii) Investigate nll
+
 # Defne nll and log evidence and compute nll loss for different values of mu
 def negloglikelihood(mu, data):
     nll = -1*torch.distributions.Normal(loc = mu, scale = 1).log_prob(data).sum()
@@ -170,6 +173,8 @@ def logevidence(mu,data):
     logevi = torch.distributions.Normal(loc = mu, scale = 1).log_prob(data).sum()
     return logevi
 
+
+# iii) Compare them
 
 # If we print their values, we find them to be identical:
 mu_guess = pyro.get_param_store()['mu'].detach()
