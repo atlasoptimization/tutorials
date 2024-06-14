@@ -87,20 +87,32 @@ data = data_dist.sample([n_data])
 
 
 # i) Model definition
+#
+# The model consists in a prior density and a likelihood. Sampling mu from a 
+# prob dist communicates to pyro that mu is a random variable and establishes
+# the prior for mu. Then passing it to another distribution and observing the 
+# subsequent samples establishes the likelihood function.
 
 def model(observations = None):
     # Sample one mu from the prior distribution
     mu_prior_dist = pyro.distributions.Normal(0,1)
-    # with pyro.poutine.scale(scale = torch.tensor(0.0)):
+    # Mask out the log probs of the prior
     with pyro.poutine.mask(mask=torch.tensor(False)):
-        mu_prior = pyro.sample('mu', mu_prior_dist)
+        mu = pyro.sample('mu', mu_prior_dist)
     
     # Noisily sample the mu
-    obs_dist = pyro.distributions.Normal(mu_prior, sigma_true)
+    obs_dist = pyro.distributions.Normal(mu, sigma_true)
     with pyro.plate('batch_plate', size = n_data, dim =-1):
         obs = pyro.sample('obs', obs_dist, obs = observations)
     
     return obs
+
+# The above model masks out the prior distribution. The effect is that the prior
+# does not contribute anymore to the logprobs passed to the optimization. In effect
+# this is similar to putting an improper uniform prior over the random variable
+# mu. Nonetheless, mu stays an unobserved (latent) random variable, whose posterior
+# is approximated by the guide function below. 
+
 
 
 """
@@ -109,6 +121,12 @@ def model(observations = None):
 
 
 # i) Guide definition
+#
+# The guide function determines the variational distribution used to approximate
+# the posterior density. We employ herre a Normal distribution with unknown mean
+# and standard deviation. Optimizing these parameters w.r.t. the elbo implies
+# choosing mean and standard deviation of the distribution mu_post_dist such that
+# the resultant distribution most colesly matches the true posterior. 
 
 def guide(observations = None):
     # Set up parameters for posterior density
@@ -122,6 +140,19 @@ def guide(observations = None):
     
     return mu_post
 
+# The above guide produces a single sample of a scalar random variable mu_post.
+# The random variable is normally distributed with the paramters mu_post, sigma_post
+# Sample sites with identical names in model and guide (like mu here) communicate
+# to pyro that the samples drawn in the guide should represent the posterior density
+# of mu with mu distributed as indicated in the model. Subsequently the following
+# happens during optimization:
+#   1. mu_post, sigma post are the only adjustable parameters. Scalar random var mu 
+#       is unobserved and its posterior needs to be constructed.
+#   2. mu_post, sigma post are interpreted as mean and std of variational distribution
+#   3. mu_post, sigma_post are adjusted to be close to the true posterir as measured by KLD
+# The true posterior is incidentally also a normal distribution, but with mean
+# equal to the arithmetic mean and stt = sigma/sqrt(n_data). This allows checking
+# the results easily.
 
 
 """
