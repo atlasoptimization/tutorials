@@ -20,7 +20,7 @@ illumination of one specific phenomenon.
 In this script, we showcase how the elbo loss can be interpreted as a maximum 
 likelihood estimator in the simple context of estimating the scale parameter of
 a normal distribution. We compare the value of the elbo loss to the penalty
-function representing maximum likelihood and explain the differences.
+function representing maximum likelihood estimation and explain the differences.
 For this, do the following:
     1. Definitions and imports
     2. Simulate some data

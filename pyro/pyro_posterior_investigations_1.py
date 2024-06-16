@@ -162,8 +162,10 @@ def guide(observations = None):
 # i) Set up optimization
 
 # Optimization options
+# Both learning_rate and num_particles have a huge impact on optimization quality
+# Especially increased num_particles makes the loss estimate much less noisy.
 adam = pyro.optim.Adam({"lr": 0.01})
-elbo = pyro.infer.Trace_ELBO()
+elbo = pyro.infer.Trace_ELBO(num_particles = 16)
 svi = pyro.infer.SVI(model, guide, adam, elbo)
 
 
