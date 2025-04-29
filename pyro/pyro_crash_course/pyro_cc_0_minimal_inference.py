@@ -1,22 +1,21 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-This script is part of a series of pyro demos. These demos are designed to 
-provide some insight into pyro's capabilities. They are not meant to be fully 
-understood; rather they showcase potential use cases and how pyro can be em-
-ployed in the context of classical statistics and modern machine learning.
-will tackle a sequence of problems of increasing complexity that will take us
-from understanding simple pyro concepts to fitting models via svi and finally
-fitting a model involving hidden variables and neural networks.
-The tutorials consist in the following:
-    - estimate mean and variance                (demo_1)
-    - inference for control flow model          (demo_2)
-    - estimate mean and covariance              (demo_3)
-    - fit a parametric model                    (demo_4)
-    - distribution dependent on ANN             (demo_5)
-    - gaussian process regression ++            (demo_6)
-    - variational autoencoder                   (demo_7)
-    - distribution dependent on DCO             (demo 8)
+This script is part of a series of notebooks that showcase the pyro probabilistic
+programming language - basically pytorch + probability. In this series we explore
+a sequence of increasingly complicated models meant to represent the behavior of
+some measurement device. 
+The crash course consist in the following:
+    - minimal pyro example                      (cc_0_minimal_inference)
+    - inference for control flow model          (cc_1_hello_dataset)
+    - Model with no trainable params            (cc_2_model_0)
+    - Model with deterministic parameters       (cc_2_model_1)
+    - Model with latent variables               (cc_2_model_2)
+    - Model with hierarchical randomness        (cc_2_model_3)
+    - Model with discrete random variables      (cc_2_model_4)
+    - Model with neural net                     (cc_2_model_5)
+    
+
 
 This script will build a stochastic model featuring a univariate Gaussian
 distribution and fit the mean and variance so that the resultant distribution
