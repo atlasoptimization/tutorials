@@ -1,4 +1,4 @@
-# 🚀 Pyro Crash Course
+# 🔥 Pyro Crash Course
 
 Welcome to the **Atlas Optimization Pyro Crash Course**!  
 In this quick, hands-on series, you'll learn how to:
@@ -24,20 +24,41 @@ We illustrate all concepts using a simple **thermal sensor calibration** problem
 
 ---
 
-## Sprints Overview
+## 📚 Course Structure
 
-| Sprint | Topic |
-|--------|------|
-| 0 | pyro signs of life |
-| 1 | Meet the thermistor dataset|
-| 2 | Model 0: Toy model |
-| 3 | Model 1: Model with deterministic parameters |
-| 4 | Model 2: Model with latent variables |
-| 5 | Model 3: Model with hierarchical randomness |
-| 6 | Model 4: Model with discrete random variables |
-| 7 | Model 5: Model with neural net |
+Each notebook corresponds to a stage in model complexity:
+
+| Notebook                       | Description                                      |
+|-------------------------------|--------------------------------------------------|
+| `cc_0_minimal_inference`      | Minimal example: fit parameters using SVI        |
+| `cc_1_hello_dataset`          | Generate and explore synthetic sensor data       |
+| `cc_2_model_0`                | Model with no trainable parameters               |
+| `cc_2_model_1`                | Model with deterministic (fitted) parameters     |
+| `cc_2_model_2`                | Add latent variables for hidden causes           |
+| `cc_2_model_3`                | Add hierarchical (group-level) randomness        |
+| `cc_2_model_4`                | Handle discrete latent variables (e.g. failure)  |
+| `cc_2_model_5`                | Incorporate a neural net for nonlinear effects   |
 
 ---
 
-*Atlas optimization – pushing the boundaries of optimal estimation and probabilistic modeling.*
+
+## 🧭 Modeling Philosophy
+
+Pyro encourages a different way of thinking about modeling:
+
+> ❌ Traditional Data processing: Design and apply yourself a sequence of **operations** to transform data into meaningful outputs.
+>
+> ✅ Probabilistic modeling: Specify a **generative process** for data and then let pyro perform inference automatically.
+
+You declare the *model* and the *goal* (e.g. fit latent variables, maximize likelihood), and the inference machinery is handled under the hood automatically.
+
+---
+
+```
+*This series is created for educational purposes by Dr. Jemil Avers Butt, Atlas Optimization GmbH – [www.atlasoptimization.com](https://www.atlasoptimization.com).*
+```
+
+
+
+
 

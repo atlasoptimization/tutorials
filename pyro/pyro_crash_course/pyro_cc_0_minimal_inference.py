@@ -7,7 +7,7 @@ a sequence of increasingly complicated models meant to represent the behavior of
 some measurement device. 
 The crash course consist in the following:
     - minimal pyro example                      (cc_0_minimal_inference)
-    - inference for control flow model          (cc_1_hello_dataset)
+    - generating data and exploring it          (cc_1_hello_dataset)
     - Model with no trainable params            (cc_2_model_0)
     - Model with deterministic parameters       (cc_2_model_1)
     - Model with latent variables               (cc_2_model_2)
@@ -15,7 +15,6 @@ The crash course consist in the following:
     - Model with discrete random variables      (cc_2_model_4)
     - Model with neural net                     (cc_2_model_5)
     
-
 
 This script will build a stochastic model featuring a univariate Gaussian
 distribution and fit the mean and variance so that the resultant distribution
@@ -29,7 +28,7 @@ For this, do the following:
     5. Plots and illustrations
     
 The script is meant solely for educational and illustrative purposes. Written by
-Jemil Avers Butt, Atlas optimization GmbH, www.atlasoptimization.com.
+Dr. Jemil Avers Butt, Atlas optimization GmbH, www.atlasoptimization.com.
 """
 
 
@@ -93,19 +92,19 @@ def model(observations = None):
     return model_sample
 
 
+# ii) Set up guide
+
+def guide(observations = None):
+    pass
+
+
 
 """
     4. Perform inference
 """
 
 
-# i) Set up guide
-
-def guide(observations = None):
-    pass
-
-
-# ii) Set up inference
+# i) Set up inference
 
 
 adam = pyro.optim.Adam({"lr": 0.1})
@@ -113,10 +112,14 @@ elbo = pyro.infer.Trace_ELBO()
 svi = pyro.infer.SVI(model, guide, adam, elbo)
 
 
-# iii) Perform svi
+# ii) Perform svi
 
+loss_sequence = []
 for step in range(100):
     loss = svi.step(data)
+    loss_sequence.append(loss)
+    if step %10 == 0:
+        print(f'epoch: {step} ; loss : {loss}')
 
 
 
@@ -125,7 +128,16 @@ for step in range(100):
 """
 
 
-# i) Print results
+# i) Plot elbo loss
+
+fig1 = plt.figure(num = 1, dpi = 300)
+plt.plot(loss_sequence)
+plt.title('ELBO loss during training')
+plt.ylabel('ELBO')
+plt.xlabel('training epoch')
+
+
+# ii) Print results
 
 print('True mu = {}, True sigma = {} \n Inferred mu = {:.3f}, Inferred sigma = {:.3f}'
       .format(mu_true, sigma_true, 
@@ -133,20 +145,20 @@ print('True mu = {}, True sigma = {} \n Inferred mu = {:.3f}, Inferred sigma = {
               pyro.get_param_store()['sigma'].item()))
 
 
-# ii) Plot data
+# iii) Plot data
 
-fig1 = plt.figure(num = 1, dpi = 300)
+fig1 = plt.figure(num = 2, dpi = 300)
 plt.hist(data.detach().numpy())
 plt.title('Histogram of data')
 
 
-# iii) Plot distributions
+# iv) Plot distributions
 
 t = torch.linspace(-3,3,100)
 inferred_dist = pyro.distributions.Normal( loc = pyro.get_param_store()['mu'], 
                                           scale = pyro.get_param_store()['sigma'])
 
-fig2 = plt.figure(num = 2, dpi = 300)
+fig2 = plt.figure(num = 3, dpi = 300)
 plt.plot(t, torch.exp(data_dist.log_prob(t)), color = 'k', label = 'true', linestyle = '-')
 plt.plot(t, torch.exp(inferred_dist.log_prob(t)).detach(), color = 'k', label = 'inferred', linestyle = '--')
 plt.title('True and inferred distributions')
