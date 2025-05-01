@@ -16,7 +16,7 @@ We illustrate all concepts using a simple **thermal sensor calibration** problem
 
 1. Watch the companion videos on [youtube](https://youtube.com) if you like more context
 2. Open the first sprint notebook here:  
-   [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/atlas-optimization/tutorials/blob/main/pyro/pyro_crash_course/pyro_cc_1_minimal_inference.ipynb)
+   [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/atlas-optimization/tutorials/blob/main/pyro/pyro_crash_course/pyro_cc_0_minimal_inference.ipynb)
 
 3. Run the installation & data generation cells.
 4. Dive into modeling, inference, and critical thinking!
