@@ -5,7 +5,7 @@ This script is part of a series of notebooks that showcase the pyro probabilisti
 programming language - basically pytorch + probability. In this series we explore
 a sequence of increasingly complicated models meant to represent the behavior of
 some measurement device. 
-The crash course consist in the following:
+The crash course consists in the following:
     - minimal pyro example                      (cc_0_minimal_inference)
     - generating data and exploring it          (cc_1_hello_dataset)
     - Model with no trainable params            (cc_2_model_0)

@@ -5,7 +5,7 @@ This script is part of a series of notebooks that showcase the pyro probabilisti
 programming language - basically pytorch + probability. In this series we explore
 a sequence of increasingly complicated models meant to represent the behavior of
 some measurement device. 
-The crash course consist in the following:
+The crash course consists in the following:
     - minimal pyro example                      (cc_0_minimal_inference)
     - generating data and exploring it          (cc_1_hello_dataset)
     - Model with no trainable params            (cc_2_model_0)
@@ -36,7 +36,7 @@ For this, do the following:
     5. Add nonlinear trend function
     6. Add noise to dataset
     7. Plots and illustrations
-    8. Preliminary interpretations
+    8. Preliminary interpretations & export
     
 The script is meant solely for educational and illustrative purposes. Written by
 Dr. Jemil Avers Butt, Atlas optimization GmbH, www.atlasoptimization.com.
@@ -57,6 +57,7 @@ Dr. Jemil Avers Butt, Atlas optimization GmbH, www.atlasoptimization.com.
 
 import pyro
 import torch
+import pandas
 import matplotlib.pyplot as plt
 
 
@@ -146,6 +147,8 @@ index_gross = 0
 impact_gross = torch.zeros([n_device, n_measure])
 impact_gross[index_gross, : ] = 5 
 T_meas_gross = T_meas_lin + impact_gross
+
+
 
 """
     5. Add nonlinear trend function
@@ -242,8 +245,9 @@ axes[4].set_ylim(y_min, y_max)
 axes[4].legend()
 
 
+
 """
-    8. Preliminary interpretations
+    8. Preliminary interpretations & export
 """
 
 # We can already make some predictions about how our future models might perform
@@ -272,8 +276,15 @@ axes[4].legend()
 #       as it generalizes very badly outside of the training range.
 
 
+df = pandas.DataFrame({
+    'sensor_id': torch.arange(n_device).repeat_interleave(n_measure).numpy(),
+    'time_step': torch.arange(n_measure).tile(n_device).numpy(),
+    'T_true': T_true.flatten().numpy(),
+    'T_measured': T_meas_noisy.flatten().numpy()
+})
 
-
+output_path = "sensor_measurements.csv"
+df.to_csv(output_path, index=False)
 
 
 
