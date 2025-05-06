@@ -9,11 +9,11 @@ The crash course consists in the following:
     - minimal pyro example                      (cc_0_minimal_inference)
     - generating data and exploring it          (cc_1_hello_dataset)
     - Model with no trainable params            (cc_2_model_0)
-    - Model with deterministic parameters       (cc_2_model_1)
-    - Model with latent variables               (cc_2_model_2)
-    - Model with hierarchical randomness        (cc_2_model_3)
-    - Model with discrete random variables      (cc_2_model_4)
-    - Model with neural net                     (cc_2_model_5)
+    - Model with deterministic parameters       (cc_3_model_1)
+    - Model with latent variables               (cc_4_model_2)
+    - Model with hierarchical randomness        (cc_5_model_3)
+    - Model with discrete random variables      (cc_6_model_4)
+    - Model with neural net                     (cc_7_model_5)
     
 
 This script will build a toy model that acts as a trivial baseline for comparing
