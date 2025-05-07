@@ -219,7 +219,7 @@ print('The least squares solution is alpha_0 = {}, alpha_1 = {};\n'
 # density values.
 print(' ELBO loss : {} ,\n - log prob of data : {}'.format(loss, -log_prob))
 
-# The training does not adjust the model since the model has no adjustable parameters
+# The training now adjusts the parameters in such a way that the loss decreases.
 plt.figure(1, dpi = 300)
 plt.plot(loss_sequence)
 plt.yscale("log")
