@@ -8,20 +8,6 @@ Imagine you measure temperatures with imperfect thermistors — how do you infer
 
 ---
 
-## 🧭 Modeling Philosophy
-
-Pyro encourages a different way of thinking about modeling:
-
-> ❌ Traditional Data processing: Design and apply yourself a sequence of **operations** to transform data into meaningful outputs.
->
-> ✅ Probabilistic modeling: Specify a **generative process** for data and then let pyro perform inference automatically.
-
-You declare the *model* and the *goal* (e.g. fit latent variables, maximize likelihood), and the inference machinery is handled under the hood automatically.
-
-
-
----
-
 ## 🎓 What You Will Learn
 
 - How to **build probabilistic models** from scratch using Pyro primitives  
@@ -48,14 +34,28 @@ Each concept is introduced in a clean, focused notebook and grounded in a simple
 
 | Notebook | Description | Launch |
 |----------|-------------|--------|
-| `cc_0_minimal_inference` | Minimal Pyro example: sampling and inference with a single scalar | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/atlas-optimization/tutorials/blob/main/pyro/pyro_crash_course/pyro_cc_0_minimal_inference.ipynb) |
-| `cc_1_hello_dataset` | Generate and visualize synthetic sensor data | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/atlas-optimization/tutorials/blob/main/pyro/pyro_crash_course/pyro_cc_1_hello_dataset.ipynb) |
-| `cc_2_model_0` | No free parameters: just generate + visualize predictive samples | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/atlas-optimization/tutorials/blob/main/pyro/pyro_crash_course/pyro_cc_2_model_0.ipynb) |
-| `cc_3_model_1` | Add deterministic parameters and fit with SVI (like least squares) | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/atlas-optimization/tutorials/blob/main/pyro/pyro_crash_course/pyro_cc_3_model_1.ipynb) |
-| `cc_4_model_2` | Treat parameters as **latent variables** with priors and posterior inference | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/atlas-optimization/tutorials/blob/main/pyro/pyro_crash_course/pyro_cc_4_model_2.ipynb) |
-| `cc_5_model_3` | Add **hierarchical structure**: each sensor has its own latent parameters | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/atlas-optimization/tutorials/blob/main/pyro/pyro_crash_course/pyro_cc_5_model_3.ipynb) |
-| `cc_6_model_4` | Introduce **discrete latent variables** for outlier detection | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/atlas-optimization/tutorials/blob/main/pyro/pyro_crash_course/pyro_cc_6_model_4.ipynb) |
-| `cc_7_model_5` | Use a **neural net** as part of the generative process for flexible modeling | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/atlas-optimization/tutorials/blob/main/pyro/pyro_crash_course/pyro_cc_7_model_5.ipynb) |
+| `cc_0_minimal_inference` | Minimal Pyro example: sampling and inference with a single scalar | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/atlas-optimization/tutorials/blob/master/pyro/pyro_crash_course/pyro_cc_0_minimal_inference.ipynb) |
+| `cc_1_hello_dataset` | Generate and visualize synthetic sensor data | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/atlas-optimization/tutorials/blob/master/pyro/pyro_crash_course/pyro_cc_1_hello_dataset.ipynb) |
+| `cc_2_model_0` | No free parameters: just generate + visualize predictive samples | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/atlas-optimization/tutorials/blob/master/pyro/pyro_crash_course/pyro_cc_2_model_0.ipynb) |
+| `cc_3_model_1` | Add deterministic parameters and fit with SVI (like least squares) | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/atlas-optimization/tutorials/blob/master/pyro/pyro_crash_course/pyro_cc_3_model_1.ipynb) |
+| `cc_4_model_2` | Treat parameters as **latent variables** with priors and posterior inference | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/atlas-optimization/tutorials/blob/master/pyro/pyro_crash_course/pyro_cc_4_model_2.ipynb) |
+| `cc_5_model_3` | Add **hierarchical structure**: each sensor has its own latent parameters | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/atlas-optimization/tutorials/blob/master/pyro/pyro_crash_course/pyro_cc_5_model_3.ipynb) |
+| `cc_6_model_4` | Introduce **discrete latent variables** for outlier detection | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/atlas-optimization/tutorials/blob/master/pyro/pyro_crash_course/pyro_cc_6_model_4.ipynb) |
+| `cc_7_model_5` | Use a **neural net** as part of the generative process for flexible modeling | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/atlas-optimization/tutorials/blob/master/pyro/pyro_crash_course/pyro_cc_7_model_5.ipynb) |
+
+---
+
+## 🧭 Modeling Philosophy
+
+Pyro encourages a different way of thinking about modeling:
+
+> ❌ Traditional Data processing: Design and apply yourself a sequence of **operations** to transform data into meaningful outputs.
+>
+> ✅ Probabilistic modeling: Specify a **generative process** for data and then let pyro perform inference automatically.
+
+You declare the *model* and the *goal* (e.g. fit latent variables, maximize likelihood), and the inference machinery is handled under the hood automatically.
+
+
 
 ---
 
