@@ -16,38 +16,39 @@ The crash course consists in the following:
     - Model with neural net                     (cc_2_model_5)
     
 
-This script will expand on the previous model_2 and feature latent variables
-offset and scale that are different for each measurement device. This model_3
-is therefore more finegrained than model_2 and features more latent variables
-(2 per device) but is not fundamentally different in terms of theoretical 
-background. To allow more flexibility, we will make the variational family be
-a multivariate gaussian (thereby allowing for correlations in the posterior).
-This also simplifies the guide, since we only need one distribution per device.
-We will infer n_device latent distributions and therefore n_device x 2 parameters;
-the for each device a mean and a covariance matrix representing the posterior.
-This model will allow us to treat the different thermistors differently and will
-do so in an automatic manner.
+This script will expand on the previous model_3 and feature the hierarchical
+approach but also introduce a discrete latent variable to classify if a measurement
+device is faulty. This will add another powerful tool to our arsenal, since 
+discrete random variables are incredibly flexible for modelling class membership,
+hidden switches for qualitatively different model behavior and even logical
+constructions. Just as with Integer optimization though, the cost is a nondifferentiable
+objective and some type of enumeration. The can increase by a lot the computational
+load. The benefit for our model is not as big as the step from a single global 
+alpha to a per-device alpha (model_2 -> model_3) but the insight into the hidden
+state of the measurement device is quite nice.  
 
-# Our model assumes the thermistors generate measurements T_meas which are made
-made up from scaled T_true and some offset (and noise).  We will assume that the
-scale and offset are unknown random variables. They are different for each sensor
-in contrast to model_1 where only one scale and offset is shared among all the 
-devices. The motivation for this model is the same as for model_2, i.e. the scale
-and offset being known from some spec sheet up to some uncertainty while we allow
-the additional flexibility of the devices being manufactured with slight differences.
+Our model assumes the thermistors generate measurements T_meas which are made
+made up from scaled T_true and some offset (and noise) with scale and offset being
+known from a spec sheet up to some uncertainty. Scale and offset are different
+for each device. In contrast to model_3, we introduce a new discrete variable 
+is_faulty that indicates if the device behaves atypically. The generative process
+producing devices that then produce data is assumed as:
+    1. A random decision if the device is built faulty
+    2. Depending on is_faulty, sample alpha from different distribtutions
+    3. Use alpha to construct the mean, then add noise to generate observations
 Since we will assume the standard deviation of the noise to be fixed, the model
-has again no trainable parameters.
+has again no trainable parameters. 
+Having the outlier/faulty property as explicit part in our model also means that
+we could learn outlier properties: not only what features make an outlier an outlier
+but also how outlier variance behaves etc. This would be more difficult in a manual
+computation scheme where we filter out outliers or other subpopulations of the
+measurements and then would need to perform inference on these as well.
 
-The guide will again be nontrivial. We will prescribe as variational family to
-be adjusted towards the posterior a multivariate Gaussian with unknown mean and
-unknown covariance matrix (these are the trainable parameters). We will after 
-training be able to sample from the posterior distribution to get a guess of
-scale and offset per device and also to sample from the posterior predictive
-distribution, which should yield now data that fits the measurement data better
-since trained posterior scales and offsets are different for each device.
 
-In the end, this model_3 showcases the basics of building a (model, guide) pair
-featuring a hierarchy of latent random variables and how the associated posterior
+The guide will be very similar as in the previous scripts. 
+
+In the end, this model_4 showcases the basics of building a (model, guide) pair
+featuring a latent discrete random variable and how the associated posterior
 distributions are inferred by pyro's inference machinery.
 
 For this, do the following:
@@ -76,10 +77,14 @@ Dr. Jemil Avers Butt, Atlas optimization GmbH, www.atlasoptimization.com.
 # installed by default. In that case, uncomment the following command.
 # !pip install pyro-ppl
 
+# We need an additional decoration config_enumerate to declare inference over
+# a discrete latent variable - then the appropriate sample sites are automatically
+# exxhaustively enumerated.
 import pyro
 import torch
 import pandas
 import matplotlib.pyplot as plt
+from pyro.infer import config_enumerate
 
 
 # ii) Definitions
@@ -108,54 +113,85 @@ pyro.set_rng_seed(0)
 
 
 # i) Define the model
-# We implement a simple model assuming that our measurements T_meas are scaled,
-# biased, noisy versions of T_true where scale and offset are random/ known only
-# with some uncertainty.  But now scale and offset are latent variables different
-# for each measurement device.
-# We might write this as: T_meas = a_0 + a_1*T_true + noise.
-# Or similary as the probabilistic model
+# We implement the same model as in the previous notebook but add an additional
+# generative step in the beginning, where we sample from the device production
+# distribution to determine if the device is being produced faulty.
+# This may be written as the probabilistic model:
+# is_faulty ~ Bernoulli(p_faulty)           coin flip to decide production fault
+# Sigma = Sigma_normal or Sigma_faulty      dependent on is_faulty
+# a_dist = N([0,1], Sigma)
 # a ~ N([0,1], 0.1 * I)                     a shape [n_device,2]
 # mu_T_meas = a[:,0] + a[:,1] * T_true      mu_T_meas shape [n_device, n_meas]
 # T_meas ~ N(mu_T_meas, sigma_T_meas)       T_meas shape [n_device, n_meas]
+# This model is actually quite interesting and may be a bit hard to grasp initially.
+# We have two different stochastic models essentially: One for normal devices and
+# another, way more uncertain one for faulty devices. The latter one is only to
+# be used sparsely though (encoded by low p_faulty). Otherwise, the inference would
+# just declare every device faulty since this would lead to higher probabilities
+# since the faulty model has higher variance = more likelihood for residuals.
+# Overall, there is a possibility to interpret this as a thresholding test where
+# the threshold comes from p_faulty and sigma_alpha, sigma_alpha_faulty.
 
-# Define priors
-mu_alpha = torch.tensor([0.0, 1.0])
+
+# Define priors and fixed params
+mu_alpha = torch.tensor([0.0, 1.0]).expand(n_device, -1)
 Sigma_alpha = torch.tensor([[0.1**2,0], [0, 0.1**2]])
+p_faulty = 0.05
+Sigma_faulty = 100*Sigma_alpha
 
-
-# Build the model in pyro
+# Build the model in pyro; use decorator to mark discrete variables for enumeration.
+@config_enumerate
 def model(input_vars = T_true, observations = None):
-    # We sample again in the two different independence contexts 'device_plate'
-    # and 'measure_plate'. But now sampling the different latents alpha happens
-    # already in the device plate (as they are different for each device).
-    alpha_dist = pyro.distributions.MultivariateNormal(loc = mu_alpha,
-                                                covariance_matrix = Sigma_alpha)
-    
+    # Build reusable independence context device_plate.
+    device_plate = pyro.plate('device_plate', size=n_device, dim=-1)
+
+    with device_plate:
+        is_faulty = pyro.sample('is_faulty', pyro.distributions.Bernoulli(p_faulty))
+
+    # Convert boolean indicator to tensor of shape [n_device, 1, 1] for broadcasting
+    is_faulty_tensor = is_faulty.unsqueeze(-1).unsqueeze(-1)
+
+    # Build Sigma_device via interpolation
+    Sigma_device = Sigma_alpha + is_faulty_tensor * (Sigma_faulty - Sigma_alpha)  # shape: [n_device, 2, 2]
+
+    # Make alpha_dist have a sigma dependent on  device and is_faulty
+    alpha_dist = pyro.distributions.MultivariateNormal(
+        loc=mu_alpha,                   # shape: [2, n_device, 2]
+        covariance_matrix=Sigma_device)     # shape: [2, n_device, 2, 2]
+            
     # Independence in first dim of alpha_dist, sample n_device times
-    with pyro.plate('device_plate', size = n_device, dim = -1):
-        # We sample alpha from a multivariate normal prior
-        alpha = pyro.sample('alpha', alpha_dist)
-    
-    # Build the observation distribution
-    # This requires a bit of reshaping to achieve broadcastable shapes.
-    mean_obs = (alpha[:,0].unsqueeze(1)) + (alpha[:,1].unsqueeze(1))*T_true
-    obs_dist = pyro.distributions.Normal(loc = mean_obs, scale = sigma_T_meas)
-    
+    with device_plate:
+        alpha = pyro.sample("alpha", alpha_dist)
+    mean_obs = alpha[:, 0].unsqueeze(1) + alpha[:, 1].unsqueeze(1) * T_true
+    obs_dist = pyro.distributions.Normal(loc=mean_obs, scale=sigma_T_meas)
+
     # Sample from this distribution and declare the samples independent in the
-    # first two dims. 
-    with pyro.plate('device_plate', dim = -2):
-        with pyro.plate('measure_plate', dim = -1):
-            obs = pyro.sample('observations', obs_dist, obs = observations)
-    
-    return obs
-                      
+    with pyro.plate('device_plate', dim=-2):
+        with pyro.plate('measure_plate', dim=-1):
+            pyro.sample("observations", obs_dist, obs=observations)
 
 # ii) Build the guide
-# The guide ( = variational distribution) now needs to encode several posterior
-# distributions, one multivariate Gaussian for each device.
+# Since the guide needs to encode the posterior distribution of the is_faulty
+# variable now as well, we build a distribution with trainable parameters. The
+# probs_faulty params encode how much we believe the devices to be faulty (0.05)
+# for all devices equally prior to learning. Sampling from Bernoulli(probs_faulty)
+# delivers a sample on the faultyness and probs_faulty are adjusted during training
+# such that that sample harmonizes with the associated probabilistic model.
 
 # Build the guide
+@config_enumerate
 def guide(input_vars = T_true, observations = None):
+    # Build reusable independence context device_plate.
+    device_plate = pyro.plate('device_plate', size=n_device, dim=-1)
+    
+    # Learn a per-device probability of being faulty
+    probs_faulty = pyro.param("probs_faulty", 0.05 * torch.ones(n_device),
+                              constraint=pyro.distributions.constraints.unit_interval)
+    
+    # Sample discrete variable from learned probabilities
+    with device_plate:
+        is_faulty = pyro.sample("is_faulty", pyro.distributions.Bernoulli(probs_faulty))
+    
     # Per-device means and scales (shape [n_device, 2])
     mu_alpha_post = pyro.param('mu_alpha_post', torch.tensor([0,1.0]).unsqueeze(0).expand([n_device,2]))
     sigma_alpha_post = (pyro.param('sigma_alpha_post', 0.1 * (torch.eye(2).unsqueeze(0)).expand([n_device,2,2]),
@@ -164,12 +200,18 @@ def guide(input_vars = T_true, observations = None):
     # We add 1e-3 on the diagonal of the covariance matrix to avoid numerical issues
     # related to positive definiteness tests.
 
-    with pyro.plate('device_plate', size=n_device, dim=-1):
+    with device_plate:
         # Multivariate Gaussian for each device (allow for correlations)
         alpha = pyro.sample('alpha', pyro.distributions.MultivariateNormal(loc = mu_alpha_post,
                                         covariance_matrix = sigma_alpha_post))
 
-    return alpha
+    return alpha, is_faulty
+
+# Both model and guide are written in such a way that dimensions can be prepended
+# easily. This is necessary as during inference, all possible values of the
+# discrete variable are enumerated and that enumeration happens in a separate 
+# dimension on the left. This can make writing (model, guide) pairs suitable for
+# discrete inference tricky.
 
 
 # iii) Illustrate model and guide
@@ -196,6 +238,7 @@ n_guide_samples = 1000
 predictive = pyro.infer.Predictive
 prior_predictive_pretrain = predictive(model, num_samples = n_model_samples)()['observations']
 posterior_pretrain = predictive(guide, num_samples = n_guide_samples)()['alpha']
+posterior_pretrain_faulty = predictive(guide, num_samples = n_guide_samples)()['is_faulty']
 posterior_predictive_pretrain = predictive(model, guide = guide, num_samples = n_model_samples)()['observations']
 
 
@@ -207,8 +250,11 @@ posterior_predictive_pretrain = predictive(model, guide = guide, num_samples = n
 
 # i) Set up inference
 
+# In terms of loss function, we need now TraceEnum_ELBO instead of Trace_ELBO,
+# as the latter one is not designed to handle enumeration.
 adam = pyro.optim.Adam({"lr": 0.01})
-elbo = pyro.infer.Trace_ELBO(num_particles = 20)
+elbo = pyro.infer.TraceEnum_ELBO(num_particles = 20,
+                                 max_plate_nesting = 2)
 svi = pyro.infer.SVI(model, guide, adam, elbo)
 
 
@@ -227,17 +273,17 @@ for step in range(1000):
 
 prior_predictive_posttrain = predictive(model, num_samples = n_model_samples)()['observations']
 posterior_posttrain = predictive(guide, num_samples = n_guide_samples)()['alpha']
+posterior_posttrain_faulty = predictive(guide, num_samples = n_guide_samples)()['is_faulty']
 posterior_predictive_posttrain = predictive(model, guide = guide, num_samples = n_model_samples)()['observations']
 
 
 # iv) Additional investigations
 
-# The shapes inside of the model and guide are now slightly more complex. We can
-# now see that alpha has a batch shape of 5 (independent samples from the alpha
-# distribution) and an event shape of 2 (since its multivariate and each draw
-# delivers alpha = (offset, scale). Notice that the observation dims have not 
-# changed and still have batch_shape [5,100]. The guide parameter sigma_alpha_post
-# (The posterior covariance matrices per device) has shape 5 x 2 x 2 where 5 = n_device.
+# The model traces do not show anything specific. Apart from random variable 
+# is_faulty and probabilities probs_faulty, everything is as in model_3. The
+# complicated part of the inference is hidden and perfomed by prepending an 
+# enumeration dimension in front of some samples and enumerating all possible 
+# results.
 model_trace = pyro.poutine.trace(model).get_trace(T_true, observations = T_meas)
 guide_trace = pyro.poutine.trace(guide).get_trace(T_true, observations = T_meas)
 print('These are the shapes inside of the model : \n {}'.format(model_trace.format_shapes()))
@@ -246,6 +292,16 @@ print('These are the shapes inside of the guide : \n {}'.format(guide_trace.form
 # The parameters of the posterior are again stored in pyro's param_store
 for name, value in pyro.get_param_store().items():
     print('Param : {}; Value : {}'.format(name, value))
+
+# Estimate the posterior probabilities of each device being faulty. For this,
+# take the samples of is_faulty from the guide function and average them to see
+# the probability of is_faulty being assigned to each device.
+faulty_pretrain = torch.mean(posterior_pretrain_faulty,dim=0)
+faulty_posttrain = torch.mean(posterior_posttrain_faulty,dim=0)
+print('is_faulty ground truth : [1, 0, 0, 0, 0]')
+print('Probabilities of being faulty pre-training : {} \n'
+      'Probabilities of being faulty post-training : {} '
+      .format(faulty_pretrain, faulty_posttrain))
 
 
 """
@@ -343,15 +399,9 @@ plt.tight_layout()
 plt.show()
 
 
-# The results are already quite interesting. We see that the posterior distribution
-# has been trained to better match the overall spread found in the data. A detailed
-# view of the histogram of the latent variables offset, scale also reveals that
-# the distribution of latents is multimodal - one of the measurement devices behaves
-# quite differently from the others. It has a similar scale but an offset that 
-# differs by at least one degree C from all the other sensors. This might be a
-# faulty sensor, that we could categorize as an outliner - and in fact we will 
-# look into this in the next model that tries its hand at introducing discrete
-# random variables for outlier detection.
+# The results are interesting. The faulty device is recognized quite easily as
+# device nr 1 (as we declared in the simulation stage of the tutorial, pyro_cc-1).
+
 
 
 
