@@ -6,6 +6,9 @@ This hands-on tutorial series teaches you how to build, understand, and apply **
 We use a **sensor calibration scenario** as a motivating example:  
 Imagine you measure temperatures with imperfect thermistors — how do you infer their offset, scale, uncertainty, or failure modes?
 
+👉 [Download `pyro_crash_course` as ZIP](https://download-directory.github.io/?url=https://github.com/atlasoptimization/tutorials/tree/master/pyro/pyro_crash_course)
+
+
 ---
 
 ## 🎓 What You Will Learn
@@ -42,7 +45,6 @@ Each concept is introduced in a clean, focused notebook and grounded in a simple
 | `cc_5_model_3` | Add **hierarchical structure**: each sensor has its own latent parameters | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/atlasoptimization/tutorials/blob/master/pyro/pyro_crash_course/pyro_cc_5_model_3.ipynb) |
 | `cc_6_model_4` | Introduce **discrete latent variables** for outlier detection | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/atlasoptimization/tutorials/blob/master/pyro/pyro_crash_course/pyro_cc_6_model_4.ipynb) |
 | `cc_7_model_5` | Use a **neural net** as part of the generative process for flexible modeling | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/atlasoptimization/tutorials/blob/master/pyro/pyro_crash_course/pyro_cc_7_model_5.ipynb) |
-
 
 ---
 
